@@ -79,6 +79,7 @@ footer{padding:20px;text-align:center;color:var(--sub);font-size:11.5px}
 <main>
   <div class="tablewrap"><table id="table"></table></div>
   <p class="hint">
+    <b>⧉ neben dem Variantennamen</b> dupliziert diese Variante als Kopie direkt rechts daneben (Formeln werden auf die Kopie umgebogen). „+ Variante" legt eine leere Spalte mit Standardformeln an. Ja/Nein-Felder akzeptieren auch „ja"/„nein".<br>
     <b>Formeln:</b> Zelle anklicken, mit <code>=</code> beginnen, andere Zellen per <code>Cluster::Zeile::Variante</code> referenzieren, z. B. <code>=heizlast::wandverlust::folie+heizlast::dachverlust::folie</code>. Funktioniert clusterübergreifend, beliebig verschachtelt, mit +, −, *, /.<br>
     <b>Gelb hinterlegte Zeilen</b> (Zwischensumme, Gesamtsumme) sind fest automatisch berechnet und nicht direkt editierbar. Alle anderen Zeilen – auch die mit gelbem Rand markierten „Formel-Zeilen" – sind normale, editierbare Formelzellen wie in Excel; der Rand ist nur ein visueller Hinweis, dass hier üblicherweise eine Formel statt eines Rohwerts steht.<br>
     <b>„In Gesamtsumme?"</b> pro Kosten-Cluster: Ja/Nein-Umschalter. Nur bei „Ja" fließt die Zwischensumme dieses Clusters für diese Spalte in die Gesamtsumme ein.<br>
@@ -277,116 +278,186 @@ function starterData(){
     ]}
   ];
 
-  const values = {
-    'geometrie::grundflaeche::folie':'100', 'geometrie::geschossflaeche::folie':'200',
-    'geometrie::wandlaenge::folie':'40.2', 'geometrie::wandhoehe::folie':'5', 'geometrie::volumen::folie':'500',
-
-    'anforderungen::raumtemperatur::folie':'20', 'anforderungen::aussentemperatur::folie':'-13',
-    'anforderungen::luftwechsel::folie':'0.5',
-
-    'dach::laenge::folie':'11', 'dach::breite::folie':'9.1',
-    'dach::flaeche::folie':'=dach::laenge::folie*dach::breite::folie',
-
-    'normanforderungen::geg_wand::folie':'0.28', 'normanforderungen::geg_dach::folie':'0.20',
-    'normanforderungen::geg_kellerdecke::folie':'0.30', 'normanforderungen::geg_fenster::folie':'1.30',
-    'normanforderungen::eh40_wand::folie':'0.18', 'normanforderungen::eh40_dach::folie':'0.15',
-    'normanforderungen::eh40_kellerdecke::folie':'0.25',
-    'geometrie::kellerwandhoehe::folie':'2.5',
-    'geometrie::kellerwandflaeche::folie':'=geometrie::wandlaenge::folie*geometrie::kellerwandhoehe::folie',
-
-
-    'fenster::typ1_label::folie':'bodentief', 'fenster::typ1_anzahl::folie':'3', 'fenster::typ1_breite::folie':'1.0',
-    'fenster::typ1_hoehe::folie':'2.2', 'fenster::typ1_uwert::folie':'0.9', 'fenster::typ1_kosten_pro_stk::folie':'900',
-    'fenster::typ2_label::gutex_wdvs':'klein', 'fenster::typ2_anzahl::gutex_wdvs':'5', 'fenster::typ2_breite::gutex_wdvs':'1.2',
-    'fenster::typ2_hoehe::gutex_wdvs':'1.2', 'fenster::typ2_uwert::gutex_wdvs':'0.9', 'fenster::typ2_kosten_pro_stk::gutex_wdvs':'450'
-  };
-
-  // Geometrie ist spaltenübergreifend identisch (gleiche Gebäudehülle);
-  // Wand/Fenster/Türen/Dach/Kellerboden und die Heizlast reagieren je Spalte eigenständig.
-  variants.forEach(v=>{
-    const id = v.id;
-    values['wand::flaeche_brutto::'+id] = '=geometrie::wandlaenge::folie*geometrie::wandhoehe::folie';
-    values['wand::flaeche_netto::'+id] = '=wand::flaeche_brutto::'+id+'-fenster::flaeche::'+id+'-tueren::flaeche::'+id+'-wintergarten::anschlusswand::'+id+'*wintergarten::auswahl::'+id+'*wintergarten::beheizt::'+id;
-    values['wand::material_menge::'+id] = '=wand::flaeche_netto::'+id;
-
-    [1,2,3].forEach(n=>{
-      const t='fenster::typ'+n+'_';
-      values[t+'flaeche::'+id] = '='+t+'anzahl::'+id+'*'+t+'breite::'+id+'*'+t+'hoehe::'+id;
-      values[t+'kosten::'+id] = '='+t+'anzahl::'+id+'*'+t+'kosten_pro_stk::'+id;
-    });
-    values['fenster::flaeche::'+id] = '=fenster::typ1_flaeche::'+id+'+fenster::typ2_flaeche::'+id+'+fenster::typ3_flaeche::'+id;
-    values['fenster::kosten::'+id] = '=fenster::typ1_kosten::'+id+'+fenster::typ2_kosten::'+id+'+fenster::typ3_kosten::'+id;
-    values['fenster::uwert_mittel::'+id] = '=fenster::flaeche::'+id+'==0?0:(fenster::typ1_flaeche::'+id+'*fenster::typ1_uwert::'+id+'+fenster::typ2_flaeche::'+id+'*fenster::typ2_uwert::'+id+'+fenster::typ3_flaeche::'+id+'*fenster::typ3_uwert::'+id+')/fenster::flaeche::'+id;
-    values['tueren::flaeche::'+id] = '=tueren::anzahl::'+id+'*tueren::breite::'+id+'*tueren::hoehe::'+id;
-    values['dach::flaeche::'+id] = '=dach::laenge::folie*dach::breite::folie';
-    values['kellerboden::flaeche::'+id] = '=geometrie::grundflaeche::folie';
-
-    values['heizlast::norm_aussentemperatur::'+id] = '=anforderungen::aussentemperatur::folie';
-    values['heizlast::raumtemperatur::'+id] = '=anforderungen::raumtemperatur::folie';
-    values['heizlast::temperaturdifferenz::'+id] = '=heizlast::raumtemperatur::'+id+'-heizlast::norm_aussentemperatur::'+id;
-    values['heizlast::wandverlust::'+id] = '=wand::flaeche_netto::'+id+'*wand::uwert::'+id+'*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::dachverlust::'+id] = '=dach::flaeche::'+id+'*dach::uwert::'+id+'*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::bodenverlust::'+id] = '=kellerboden::flaeche::'+id+'*kellerboden::uwert::'+id+'*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::fensterverlust::'+id] = '=(fenster::typ1_flaeche::'+id+'*fenster::typ1_uwert::'+id+'+fenster::typ2_flaeche::'+id+'*fenster::typ2_uwert::'+id+'+fenster::typ3_flaeche::'+id+'*fenster::typ3_uwert::'+id+')*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::wintergartenverlust::'+id] = '=wintergarten::auswahl::'+id+'*wintergarten::beheizt::'+id+'*(wintergarten::verglasung_flaeche::'+id+'*wintergarten::verglasung_uwert::'+id+'+wintergarten::dach_flaeche::'+id+'*wintergarten::dach_uwert::'+id+'+wintergarten::wand_flaeche::'+id+'*wintergarten::wand_uwert::'+id+')*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::tuerverlust::'+id] = '=tueren::flaeche::'+id+'*tueren::uwert::'+id+'*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::transmissionsverlust::'+id] = '=heizlast::wandverlust::'+id+'+heizlast::dachverlust::'+id+'+heizlast::bodenverlust::'+id+'+heizlast::fensterverlust::'+id+'+heizlast::tuerverlust::'+id+'+heizlast::wintergartenverlust::'+id;
-    values['heizlast::volumen::'+id] = '=geometrie::volumen::folie';
-    values['heizlast::luftwechsel::'+id] = '=anforderungen::luftwechsel::folie';
-    values['heizlast::luftverlust::'+id] = '=0.34*heizlast::luftwechsel::'+id+'*heizlast::volumen::'+id+'*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::waermebrueckenfaktor::'+id] = '15';
-    values['heizlast::waermebrueckenverlust::'+id] = '=heizlast::waermebrueckenfaktor::'+id+'*heizlast::temperaturdifferenz::'+id;
-    values['heizlast::heizlast::'+id] = '=(heizlast::transmissionsverlust::'+id+'+heizlast::luftverlust::'+id+'+heizlast::waermebrueckenverlust::'+id+')/1000';
-    values['heizlast::beheizte_flaeche::'+id] = '=geometrie::geschossflaeche::folie';
-    values['heizlast::heizlast_pro_m2::'+id] = '=heizlast::heizlast::'+id+'*1000/heizlast::beheizte_flaeche::'+id;
-
-    values['wintergarten::flaeche::'+id] = '=wintergarten::laenge::'+id+'*wintergarten::breite::'+id;
-    values['wintergarten::volumen::'+id] = '=wintergarten::flaeche::'+id+'*wintergarten::hoehe::'+id;
-    values['perimeterdaemmung::flaeche::'+id] = '=geometrie::kellerwandflaeche::folie';
-    values['perimeterdaemmung::volumen::'+id] = '=perimeterdaemmung::flaeche::'+id+'*perimeterdaemmung::daemmstaerke::'+id+'/1000';
-    values['horizontalsperre::laenge::'+id] = '=geometrie::wandlaenge::folie';
-    values['horizontalsperre::flaeche::'+id] = '=horizontalsperre::breite::'+id+'*horizontalsperre::laenge::'+id;
-    values['zwischendecke::flaeche::'+id] = '=geometrie::grundflaeche::folie';
-    values['zwischendecke::material_menge::'+id] = '=zwischendecke::flaeche::'+id;
-
-    values['flaechenheizung::heizlast::'+id] = '=heizlast::heizlast::'+id;
-    values['flaechenheizung::heizleistung_pro_m2::'+id] = '70';
-    values['flaechenheizung::kreislaenge::'+id] = '80';
-    values['flaechenheizung::flaeche_erforderlich::'+id] = '=heizlast::heizlast::'+id+'*1000/flaechenheizung::heizleistung_pro_m2::'+id;
-    values['flaechenheizung::flaeche_verfuegbar::'+id] = '=zwischendecke::flaeche::'+id+'*zwischendecke::fuer_deckenheizung::'+id+'+wand::flaeche_netto::'+id;
-    values['flaechenheizung::flaeche_aktiv::'+id] = '=Math.min(flaechenheizung::flaeche_erforderlich::'+id+',flaechenheizung::flaeche_verfuegbar::'+id+')';
-    values['flaechenheizung::flaeche::'+id] = '=flaechenheizung::flaeche_aktiv::'+id;
-    values['flaechenheizung::kreise::'+id] = '=Math.ceil(flaechenheizung::flaeche_aktiv::'+id+'/15)';
-    values['flaechenheizung::rohrlaenge::'+id] = '=flaechenheizung::kreise::'+id+'*flaechenheizung::kreislaenge::'+id;
-
-    values['haustechnik::heizlast::'+id] = '=heizlast::heizlast::'+id;
-    values['haustechnik::reserve::'+id] = '=haustechnik::wp_leistung::'+id+'==0?"–":haustechnik::wp_leistung::'+id+'-haustechnik::wp_soll::'+id;
-    values['haustechnik::vorlauf_auslegung::'+id] = '=flaechenheizung::vorlauf::'+id;
-    values['haustechnik::personen::'+id] = '4';
-    values['haustechnik::sicherheitsfaktor::'+id] = '1';
-    values['haustechnik::cop::'+id] = '4.5';
-    values['haustechnik::ww_zuschlag::'+id] = '=haustechnik::personen::'+id+'*0.2';
-    values['haustechnik::wp_soll::'+id] = '=(haustechnik::heizlast::'+id+'+haustechnik::ww_zuschlag::'+id+')*haustechnik::sicherheitsfaktor::'+id;
-    values['haustechnik::entzug::'+id] = '=(haustechnik::wp_leistung::'+id+'==0?haustechnik::wp_soll::'+id+':haustechnik::wp_leistung::'+id+')*(1-1/haustechnik::cop::'+id+')';
-
-    values['graben::leistung_pro_kreis::'+id] = '3';
-    values['graben::rohrlaenge_pro_kreis::'+id] = '300';
-    values['graben::grabentiefe::'+id] = '1.8';
-    values['graben::grabenbreite::'+id] = '1.2';
-    values['graben::entzugsleistung::'+id] = '=haustechnik::entzug::'+id;
-    values['graben::kreisanzahl::'+id] = '=Math.ceil(graben::entzugsleistung::'+id+'/graben::leistung_pro_kreis::'+id+')';
-    values['graben::rohrlaenge_gesamt::'+id] = '=graben::kreisanzahl::'+id+'*graben::rohrlaenge_pro_kreis::'+id;
-
-    values['bivalenz::luecke::'+id] = '=haustechnik::wp_leistung::'+id+'==0?"–":Math.max(0,haustechnik::heizlast::'+id+'-(haustechnik::wp_leistung::'+id+'-haustechnik::ww_zuschlag::'+id+'))';
-    values['bivalenz::bivalenztemperatur::'+id] = '=haustechnik::wp_leistung::'+id+'==0?"–":anforderungen::raumtemperatur::folie-((haustechnik::wp_leistung::'+id+'-haustechnik::ww_zuschlag::'+id+')/haustechnik::heizlast::'+id+')*(anforderungen::raumtemperatur::folie-anforderungen::aussentemperatur::folie)';
-
-    values['normanforderungen::wand_check::'+id] = '=wand::uwert::'+id+'==0?"–":(wand::uwert::'+id+'<=normanforderungen::eh40_wand::folie?"OK":"zu hoch")';
-    values['normanforderungen::dach_check::'+id] = '=dach::uwert::'+id+'==0?"–":(dach::uwert::'+id+'<=normanforderungen::eh40_dach::folie?"OK":"zu hoch")';
-    values['normanforderungen::boden_check::'+id] = '=kellerboden::uwert::'+id+'==0?"–":(kellerboden::uwert::'+id+'<=normanforderungen::eh40_kellerdecke::folie?"OK":"zu hoch")';
-    values['normanforderungen::fenster_check::'+id] = '=fenster::uwert_mittel::'+id+'==0?"–":(fenster::uwert_mittel::'+id+'<=normanforderungen::geg_fenster::folie?"OK":"zu hoch")';
-  });
-
+  const values = {};
   return {variants, clusters, values, collapsed:{}};
+}
+
+
+const SCHEMA = 5;
+const isOn = v => { if(v===undefined||v===null) return false; const t=String(v).trim().toLowerCase(); return t==='1'||t==='true'||t==='x'||t==='yes'||t.startsWith('ja'); };
+
+// Formelvorlagen je Variante. @cluster.zeile => cluster::zeile::<diese Variante>
+function variantSpec(id){
+  const at = t => t.replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g, (m,c,r)=>c+'::'+r+'::'+id);
+  const F={}, D={}, forced=new Set();
+  const f=(c,r,expr,force)=>{ const k=c+'::'+r+'::'+id; F[k]=at('='+expr); if(force) forced.add(k); };
+  const d=(c,r,val)=>{ D[c+'::'+r+'::'+id]=String(val); };
+  f('geometrie','kellerwandflaeche','@geometrie.wandlaenge*@geometrie.kellerwandhoehe');
+  f('geometrie','dachflaeche','@dach.flaeche',true);
+  f('dach','flaeche','@dach.laenge*@dach.breite/Math.cos(@dach.neigung*Math.PI/180)',true);
+  f('wand','flaeche_brutto','@geometrie.wandlaenge*@geometrie.wandhoehe');
+  f('wand','flaeche_netto','@wand.flaeche_brutto-@fenster.flaeche-@tueren.flaeche-@wintergarten.anschlusswand*@wintergarten.auswahl*@wintergarten.beheizt');
+  f('wand','material_menge','@wand.flaeche_netto');
+  f('wand','elementanzahl','@wand.elementbreite*@wand.elementhoehe==0?0:Math.ceil(@wand.flaeche_brutto/(@wand.elementbreite*@wand.elementhoehe))',true);
+  f('wand','staenderanzahl','@wand.achsmass==0?0:@wand.elementanzahl*Math.ceil(@wand.elementbreite/@wand.achsmass)',true);
+  [1,2,3].forEach(n=>{
+    f('fenster','typ'+n+'_flaeche',`@fenster.typ${n}_anzahl*@fenster.typ${n}_breite*@fenster.typ${n}_hoehe`);
+    f('fenster','typ'+n+'_kosten',`@fenster.typ${n}_anzahl*@fenster.typ${n}_kosten_pro_stk`);
+  });
+  f('fenster','flaeche','@fenster.typ1_flaeche+@fenster.typ2_flaeche+@fenster.typ3_flaeche');
+  f('fenster','kosten','@fenster.typ1_kosten+@fenster.typ2_kosten+@fenster.typ3_kosten');
+  f('fenster','uwert_mittel','@fenster.flaeche==0?0:(@fenster.typ1_flaeche*@fenster.typ1_uwert+@fenster.typ2_flaeche*@fenster.typ2_uwert+@fenster.typ3_flaeche*@fenster.typ3_uwert)/@fenster.flaeche');
+  f('tueren','flaeche','@tueren.anzahl*@tueren.breite*@tueren.hoehe');
+  f('kellerboden','flaeche','@geometrie.grundflaeche');
+  f('perimeterdaemmung','flaeche','@geometrie.kellerwandflaeche');
+  f('perimeterdaemmung','volumen','@perimeterdaemmung.flaeche*@perimeterdaemmung.daemmstaerke/1000');
+  f('horizontalsperre','laenge','@geometrie.wandlaenge');
+  f('horizontalsperre','flaeche','@horizontalsperre.breite*@horizontalsperre.laenge');
+  f('wintergarten','flaeche','@wintergarten.laenge*@wintergarten.breite');
+  f('wintergarten','volumen','@wintergarten.flaeche*@wintergarten.hoehe');
+  f('zwischendecke','flaeche','@geometrie.grundflaeche');
+  f('zwischendecke','material_menge','@zwischendecke.flaeche');
+  f('ausbau','flaeche','@geometrie.geschossflaeche');
+  f('heizlast','temperaturdifferenz','@anforderungen.raumtemperatur-@anforderungen.aussentemperatur',true);
+  f('heizlast','wandverlust','@wand.flaeche_netto*@wand.uwert*@heizlast.temperaturdifferenz',true);
+  f('heizlast','dachverlust','@dach.flaeche*@dach.uwert*@heizlast.temperaturdifferenz',true);
+  f('heizlast','bodenverlust','@kellerboden.flaeche*@kellerboden.uwert*@heizlast.temperaturdifferenz*@heizlast.erdreich_faktor',true);
+  f('heizlast','kellerwandverlust','@geometrie.keller_beheizt*@geometrie.kellerwandflaeche*@perimeterdaemmung.uwert*@heizlast.temperaturdifferenz*@heizlast.erdreich_faktor',true);
+  f('heizlast','fensterverlust','(@fenster.typ1_flaeche*@fenster.typ1_uwert+@fenster.typ2_flaeche*@fenster.typ2_uwert+@fenster.typ3_flaeche*@fenster.typ3_uwert)*@heizlast.temperaturdifferenz',true);
+  f('heizlast','tuerverlust','@tueren.flaeche*@tueren.uwert*@heizlast.temperaturdifferenz',true);
+  f('heizlast','wintergartenverlust','@wintergarten.auswahl*@wintergarten.beheizt*(@wintergarten.verglasung_flaeche*@wintergarten.verglasung_uwert+@wintergarten.dach_flaeche*@wintergarten.dach_uwert+@wintergarten.wand_flaeche*@wintergarten.wand_uwert)*@heizlast.temperaturdifferenz',true);
+  f('heizlast','transmissionsverlust','@heizlast.wandverlust+@heizlast.dachverlust+@heizlast.bodenverlust+@heizlast.kellerwandverlust+@heizlast.fensterverlust+@heizlast.tuerverlust+@heizlast.wintergartenverlust',true);
+  f('heizlast','luftverlust','0.34*@anforderungen.luftwechsel*@geometrie.volumen*@heizlast.volumenfaktor*@heizlast.temperaturdifferenz',true);
+  f('heizlast','waermebrueckenverlust','@heizlast.waermebrueckenfaktor*@heizlast.temperaturdifferenz',true);
+  f('heizlast','heizlast','(@heizlast.transmissionsverlust+@heizlast.luftverlust+@heizlast.waermebrueckenverlust)/1000',true);
+  f('heizlast','heizlast_pro_m2','@geometrie.geschossflaeche==0?0:@heizlast.heizlast*1000/@geometrie.geschossflaeche',true);
+  f('flaechenheizung','heizlast','@heizlast.heizlast',true);
+  f('flaechenheizung','flaeche_erforderlich','@flaechenheizung.heizleistung_pro_m2==0?0:@heizlast.heizlast*1000/@flaechenheizung.heizleistung_pro_m2',true);
+  f('flaechenheizung','flaeche_verfuegbar','@flaechenheizung.nutzt_boden*@geometrie.geschossflaeche*0.8+@flaechenheizung.nutzt_decke*@zwischendecke.flaeche*0.8+@flaechenheizung.nutzt_wand*@wand.flaeche_netto*0.4',true);
+  f('flaechenheizung','flaeche_aktiv','Math.min(@flaechenheizung.flaeche_erforderlich,@flaechenheizung.flaeche_verfuegbar)',true);
+  f('flaechenheizung','flaeche','@flaechenheizung.flaeche_aktiv',true);
+  f('flaechenheizung','kreise','@flaechenheizung.flaeche_pro_kreis==0?0:Math.ceil(@flaechenheizung.flaeche_aktiv/@flaechenheizung.flaeche_pro_kreis)',true);
+  f('flaechenheizung','rohrlaenge','@flaechenheizung.kreise*@flaechenheizung.kreislaenge',true);
+  f('haustechnik','heizlast','@heizlast.heizlast',true);
+  f('haustechnik','vorlauf_auslegung','@flaechenheizung.vorlauf');
+  f('haustechnik','ww_zuschlag','@haustechnik.personen*0.2');
+  f('haustechnik','wp_soll','(@haustechnik.heizlast+@haustechnik.ww_zuschlag)*@haustechnik.sicherheitsfaktor');
+  f('haustechnik','reserve','@haustechnik.wp_leistung==0?"–":@haustechnik.wp_leistung-@haustechnik.wp_soll');
+  f('haustechnik','entzug','(@haustechnik.wp_leistung==0?@haustechnik.wp_soll:@haustechnik.wp_leistung)*(1-1/@haustechnik.cop)');
+  f('graben','entzugsleistung','@haustechnik.entzug');
+  f('graben','kreisanzahl','@graben.leistung_pro_kreis==0?0:Math.ceil(@graben.entzugsleistung/@graben.leistung_pro_kreis)');
+  f('graben','rohrlaenge_gesamt','@graben.kreisanzahl*@graben.rohrlaenge_pro_kreis');
+  f('bivalenz','luecke','@haustechnik.wp_leistung==0?"–":Math.max(0,@haustechnik.heizlast-(@haustechnik.wp_leistung-@haustechnik.ww_zuschlag))');
+  f('bivalenz','bivalenztemperatur','@haustechnik.wp_leistung==0?"–":@anforderungen.raumtemperatur-((@haustechnik.wp_leistung-@haustechnik.ww_zuschlag)/@haustechnik.heizlast)*(@anforderungen.raumtemperatur-@anforderungen.aussentemperatur)');
+  f('normanforderungen','wand_check','@wand.uwert==0?"–":(@wand.uwert<=(@anforderungen.u_wand_soll==0?@normanforderungen.eh40_wand:@anforderungen.u_wand_soll)?"OK":"über Ziel")',true);
+  f('normanforderungen','dach_check','@dach.uwert==0?"–":(@dach.uwert<=(@anforderungen.u_dach_soll==0?@normanforderungen.eh40_dach:@anforderungen.u_dach_soll)?"OK":"über Ziel")',true);
+  f('normanforderungen','boden_check','@kellerboden.uwert==0?"–":(@kellerboden.uwert<=(@anforderungen.u_boden_soll==0?@normanforderungen.eh40_kellerdecke:@anforderungen.u_boden_soll)?"OK":"über Ziel")',true);
+  f('normanforderungen','fenster_check','@fenster.uwert_mittel==0?"–":(@fenster.uwert_mittel<=(@anforderungen.u_fenster_soll==0?@normanforderungen.geg_fenster:@anforderungen.u_fenster_soll)?"OK":"über Ziel")',true);
+  f('pv','flaeche_max','@dach.flaeche*@pv.belegungsgrad');
+  f('pv','kwp_max','@pv.flaeche_max*@pv.wp_pro_m2/1000');
+  f('pv','pv_check','@pv.flaeche==0?"–":(@pv.flaeche<=@pv.flaeche_max?"OK":"größer als nutzbare Dachfläche")');
+  f('pv','jahresertrag','@pv.kwp*@pv.spez_ertrag');
+  f('betrieb','heizwaerme','@heizlast.heizlast*@betrieb.vollbenutzungsstunden');
+  f('betrieb','ww_bedarf','@haustechnik.personen*800');
+  f('betrieb','jaz','@haustechnik.cop*0.9');
+  f('betrieb','wp_strom','@betrieb.jaz==0?0:(@betrieb.heizwaerme+@betrieb.ww_bedarf)/@betrieb.jaz');
+  f('betrieb','pv_ertrag','@pv.jahresertrag');
+  f('betrieb','pv_verhaeltnis','@betrieb.wp_strom==0?0:@betrieb.pv_ertrag/@betrieb.wp_strom');
+  [['heizlast','waermebrueckenfaktor',15],['heizlast','erdreich_faktor',0.6],['heizlast','volumenfaktor',0.76],
+   ['geometrie','keller_beheizt',1],['wand','achsmass',0.625],
+   ['flaechenheizung','heizleistung_pro_m2',70],['flaechenheizung','kreislaenge',80],['flaechenheizung','flaeche_pro_kreis',15],['flaechenheizung','nutzt_boden',1],
+   ['haustechnik','personen',4],['haustechnik','sicherheitsfaktor',1],['haustechnik','cop',4.5],
+   ['graben','leistung_pro_kreis',3],['graben','rohrlaenge_pro_kreis',300],['graben','grabentiefe',1.8],['graben','grabenbreite',1.2],
+   ['pv','belegungsgrad',0.8],['pv','wp_pro_m2',210],['pv','spez_ertrag',900],['betrieb','vollbenutzungsstunden',1200],
+   ['anforderungen','raumtemperatur',20],['anforderungen','aussentemperatur',-13],['anforderungen','luftwechsel',0.5]
+  ].forEach(x=>d(x[0],x[1],x[2]));
+  return {F,D,forced};
+}
+function applyVariantFormulas(st,id,force){
+  const {F,D,forced}=variantSpec(id);
+  Object.entries(D).forEach(([k,v])=>{ if(st.values[k]===undefined) st.values[k]=v; });
+  Object.entries(F).forEach(([k,v])=>{ const cur=st.values[k]; if(cur===undefined||cur===''||(force&&forced.has(k))) st.values[k]=v; });
+}
+
+function migrate(st){
+  if(!st.values) st.values={};
+  if(!st.collapsed) st.collapsed={};
+  if((st.schema||0) >= SCHEMA) return st;
+  const C = id => st.clusters.find(c=>c.id===id);
+  const zd = C('zwischendecke');
+  if(zd) st.variants.forEach(v=>{ const k='zwischendecke::fuer_deckenheizung::'+v.id; if(st.values[k]!==undefined) st.values['flaechenheizung::nutzt_decke::'+v.id]=isOn(st.values[k])?'1':'0'; });
+  st.clusters = st.clusters.filter(c=>c.id!=='wand_raster');
+  const rm = {
+    geometrie:['wandflaeche_brutto','wandflaeche_netto','fensterflaeche','tuerenflaeche'],
+    anforderungen:['heizlast','heizlast_spezifisch'],
+    heizlast:['norm_aussentemperatur','raumtemperatur','volumen','luftwechsel','beheizte_flaeche'],
+    flaechenheizung:['raumtemperatur'], zwischendecke:['fuer_deckenheizung']
+  };
+  Object.entries(rm).forEach(([cid,ids])=>{ const c=C(cid); if(c) c.rows=c.rows.filter(r=>!ids.includes(r.id)); });
+  const setRow=(cid,rid,props)=>{ const c=C(cid); const r=c&&c.rows.find(x=>x.id===rid); if(r) Object.assign(r,props); };
+  setRow('anforderungen','api_offen',{type:'value'}); setRow('anforderungen','modbus',{type:'value'});
+  setRow('flaechenheizung','flaeche_verfuegbar',{type:'auto',label:'Verfügbare Heizfläche (Boden/Decke 80 %, Wand 40 %)'});
+  setRow('dach','flaeche',{label:'Fläche (geneigt)'}); setRow('geometrie','dachflaeche',{type:'auto'});
+  const ins=(cid,after,rows)=>{
+    const c=C(cid); if(!c) return;
+    rows=rows.filter(r=>!c.rows.some(x=>x.id===r.id)); if(!rows.length) return;
+    let i=c.rows.findIndex(x=>x.id===after);
+    if(i>=0) i=i+1; else { i=c.rows.findIndex(x=>x.id==='zwischensumme'); if(i<0) i=c.rows.length; }
+    c.rows.splice(i,0,...rows);
+  };
+  ins('geometrie','kellerwandhoehe',[mk('keller_beheizt','Keller beheizt (Kellerwand zählt zur Heizlast)','','select')]);
+  ins('dach','kosten',[mk('preis_pro_m2','Preis Dachaufbau','€/m²'),mk('aufwand','Einbau-Aufwand','€')]);
+  const dach=C('dach'); if(dach) dach.costTerms=[['kosten'],['flaeche','preis_pro_m2'],['aufwand']];
+  ins('wand','elementhoehe',[mk('achsmass','Ständerachsmaß','m')]);
+  ins('heizlast','temperaturdifferenz',[mk('erdreich_faktor','Temperaturfaktor erdberührt (Boden/Kellerwand)',''),mk('volumenfaktor','Luftvolumen netto/brutto','')]);
+  ins('heizlast','bodenverlust',[mk('kellerwandverlust','Transmissionsverlust Kellerwand','W','auto')]);
+  ins('flaechenheizung','heizleistung_pro_m2',[mk('nutzt_boden','Heizfläche Boden','','select'),mk('nutzt_decke','Heizfläche Decke','','select'),mk('nutzt_wand','Heizfläche Wand','','select')]);
+  ins('flaechenheizung','kreislaenge',[mk('flaeche_pro_kreis','Fläche je Heizkreis','m²')]);
+  ins('pv','kwp',[mk('belegungsgrad','Belegungsgrad Dachfläche',''),mk('wp_pro_m2','Modulleistung','Wp/m²'),mk('flaeche_max','Max. nutzbare PV-Fläche','m²','auto'),mk('kwp_max','Max. Leistung auf Dach','kWp','auto'),mk('pv_check','Prüfung: PV-Fläche','','auto'),mk('spez_ertrag','Spez. Ertrag','kWh/kWp·a'),mk('jahresertrag','Jahresertrag','kWh/a','auto')]);
+  const nc=[
+    {id:'rohbau_keller',name:'Keller-Rohbau (Wände, Bodenplatte, WU)',costTerms:[['beton_menge','beton_preis'],['stahl'],['aufwand']],rows:[mk('beton_menge','Beton','m³'),mk('beton_preis','Preis Beton eingebaut','€/m³'),mk('stahl','Bewehrung','€'),mk('aufwand','Schalung / Aufwand','€'),...zsAuswahl()]},
+    {id:'lueftung',name:'Lüftung Bad/WC (WRG-Kleingerät)',costTerms:[['geraet'],['kanaele'],['aufwand']],rows:[mk('volumenstrom','Volumenstrom','m³/h'),mk('wrg_grad','Wärmebereitstellungsgrad','%'),mk('geraet','Gerät','€'),mk('kanaele','Kanäle / Auslässe','€'),mk('aufwand','Einbau-Aufwand','€'),...zsAuswahl()]},
+    {id:'ausbau',name:'Innenausbau / Sanitär / Treppe',costTerms:[['flaeche','preis_pro_m2'],['sanitaer'],['treppe'],['sonstiges']],rows:[mk('flaeche','Ausbaufläche','m²','auto'),mk('preis_pro_m2','Innenausbau (Putz, Boden, Trockenbau, Türen)','€/m²'),mk('sanitaer','Sanitär / Bäder','€'),mk('treppe','Treppe','€'),mk('sonstiges','Sonstiges','€'),...zsAuswahl()]},
+    {id:'baustelle',name:'Baustelle / Kran / Eigenleistung',costTerms:[['kran_tage','kran_satz'],['geruest'],['sonstiges']],rows:[mk('kran_tage','Kran','Tage'),mk('kran_satz','Kran-Tagessatz','€/Tag'),mk('geruest','Gerüst','€'),mk('sonstiges','Baustrom, Container, Sonstiges','€'),mk('eigenleistung_std','Eigenleistung (Info, nicht in Summe)','h'),mk('montage_personen','Montage-Personen (Info)','Pers.'),...zsAuswahl()]},
+    {id:'planung',name:'Planung & Nachweise',costTerms:[['architekt'],['statik'],['energieberater'],['qng'],['bauleitung'],['genehmigungen']],rows:[mk('architekt','Architekt','€'),mk('statik','Statik','€'),mk('energieberater','Energieeffizienz-Experte (EH40)','€'),mk('qng','QNG-Zertifizierung','€'),mk('bauleitung','Bauleitung / Bauphysik / Brandschutz','€'),mk('genehmigungen','Genehmigungen / Wasserbehörde','€'),...zsAuswahl()]},
+    {id:'betrieb',name:'Betrieb pro Jahr (überschlägig)',costTerms:[],rows:[mk('vollbenutzungsstunden','Vollbenutzungsstunden Heizung','h/a'),mk('heizwaerme','Heizwärmebedarf','kWh/a','auto'),mk('ww_bedarf','Warmwasserbedarf','kWh/a','auto'),mk('jaz','JAZ-Annahme (0,9 × COP)','','auto'),mk('wp_strom','WP-Strombedarf','kWh/a','auto'),mk('pv_ertrag','PV-Jahresertrag','kWh/a','auto'),mk('pv_verhaeltnis','PV-Ertrag ÷ WP-Strom','','auto')]}
+  ];
+  nc.forEach(n=>{ if(!C(n.id)){ const gi=st.clusters.findIndex(c=>c.id==='gesamt'); st.clusters.splice(gi<0?st.clusters.length:gi,0,n); } });
+  st.clusters.forEach(c=>c.rows.filter(r=>r.type==='select').forEach(r=>st.variants.forEach(v=>{ const k=c.id+'::'+r.id+'::'+v.id; if(st.values[k]!==undefined) st.values[k]=isOn(st.values[k])?'1':'0'; })));
+  st.variants.forEach(v=>applyVariantFormulas(st,v.id,true));
+  const validRows=new Set(); st.clusters.forEach(c=>c.rows.forEach(r=>validRows.add(c.id+'::'+r.id)));
+  const validVar=new Set(st.variants.map(v=>v.id));
+  Object.keys(st.values).forEach(k=>{ const [c,r,v]=k.split('::'); if(!validRows.has(c+'::'+r)||!validVar.has(v)) delete st.values[k]; });
+  st.schema=SCHEMA;
+  return st;
+}
+
+function slug(t){ return (t.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'v').slice(0,18); }
+function uniqueVariantId(base){ let id=base, n=2; while(state.variants.some(v=>v.id===id)) id=base+'_'+(n++); return id; }
+function duplicateVariantData(idx){
+  const src=state.variants[idx];
+  const nid=uniqueVariantId(src.id.replace(/_\d+$/,''));
+  const re=new RegExp('::'+src.id+'(?![A-Za-z0-9_])','g');
+  Object.keys(state.values).forEach(k=>{
+    if(k.endsWith('::'+src.id)){
+      let val=state.values[k];
+      if(typeof val==='string' && val.startsWith('=')) val=val.replace(re,'::'+nid);
+      state.values[k.slice(0,k.length-src.id.length)+nid]=val;
+    }
+  });
+  state.variants.splice(idx+1,0,{id:nid,name:src.name+' (Kopie)'});
+  return nid;
+}
+function addBlankVariant(name){
+  const id=uniqueVariantId(slug(name));
+  state.variants.push({id,name});
+  applyVariantFormulas(state,id,false);
+  return id;
+}
+function removeVariantData(idx){
+  const id=state.variants[idx].id;
+  Object.keys(state.values).forEach(k=>{ if(k.endsWith('::'+id)) delete state.values[k]; });
+  state.variants.splice(idx,1);
 }
 
 let state = load();
@@ -396,9 +467,9 @@ try{ legacyV3 = localStorage.getItem('bauplan_matrix_v3'); }catch(e){}
 function load(){
   try{
     const raw = localStorage.getItem(STORE_KEY);
-    if(raw) return JSON.parse(raw);
+    if(raw) return migrate(JSON.parse(raw));
   }catch(e){ console.warn('Storage read failed', e); }
-  return starterData();
+  return migrate(starterData());
 }
 function save(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){ console.warn('Storage write failed', e); }
@@ -444,7 +515,7 @@ function resolve(key, seen){
   const {clusterId, rowId, variantId} = parseKey(key);
   const row = findRow(clusterId, rowId);
 
-  if(row && row.type==='select'){ return state.values[key]==='1' ? '1' : '0'; }
+  if(row && row.type==='select'){ return isOn(state.values[key]) ? '1' : '0'; }
   if(row && row.type==='grandtotal'){ return computeGrandTotal(variantId, seen); }
   if(row && rowId==='zwischensumme'){
     const cl = findCluster(clusterId);
@@ -486,9 +557,13 @@ function render(){
     span.className='variantname'; span.contentEditable='true'; span.textContent=v.name;
     span.addEventListener('blur', ()=>{ v.name = span.textContent.trim()||v.name; save(); });
     th.appendChild(span);
+    const dup = document.createElement('button');
+    dup.textContent='⧉'; dup.style.marginLeft='6px'; dup.title='Diese Variante duplizieren (Kopie direkt rechts daneben)';
+    dup.addEventListener('click', ()=>{ duplicateVariantData(vi); save(); render(); });
+    th.appendChild(dup);
     const rm = document.createElement('button');
-    rm.textContent='×'; rm.style.marginLeft='6px'; rm.title='Variante entfernen';
-    rm.addEventListener('click', ()=>{ if(confirm('Variante "'+v.name+'" entfernen?')){ state.variants.splice(vi,1); save(); render(); } });
+    rm.textContent='×'; rm.style.marginLeft='4px'; rm.title='Variante entfernen';
+    rm.addEventListener('click', ()=>{ if(confirm('Variante "'+v.name+'" entfernen?')){ removeVariantData(vi); save(); render(); } });
     th.appendChild(rm);
     trh.appendChild(th);
   });
@@ -541,7 +616,7 @@ function render(){
         if(row.type==='select'){
           td.className='cell select';
           const btn = document.createElement('button');
-          const on = state.values[key]==='1';
+          const on = isOn(state.values[key]);
           btn.className='toggle'+(on?' on':'');
           btn.textContent = on ? '✓ Ja' : '— Nein';
           btn.addEventListener('click', ()=>{ state.values[key] = on ? '0':'1'; save(); render(); });
@@ -596,12 +671,11 @@ document.getElementById('btnAddCluster').addEventListener('click', ()=>{
 });
 document.getElementById('btnAddVariant').addEventListener('click', ()=>{
   const name = prompt('Name der neuen Variante:'); if(!name) return;
-  const id = name.toLowerCase().replace(/[^a-z0-9]+/g,'_');
-  state.variants.push({id, name}); save(); render();
+  addBlankVariant(name); save(); render();
 });
 document.getElementById('btnReset').addEventListener('click', ()=>{
   if(confirm('Wirklich alles auf die Startdaten zurücksetzen? Eigene Einträge gehen verloren.')){
-    state = starterData(); save(); render();
+    state = migrate(starterData()); save(); render();
   }
 });
 const jsonPanel = document.getElementById('jsonPanel');
@@ -621,7 +695,7 @@ document.getElementById('btnImport').addEventListener('click', ()=>{
     if(!parsed.clusters || !parsed.variants) throw new Error('Struktur unvollständig (clusters/variants fehlen)');
     if(!parsed.values) parsed.values={};
     if(!parsed.collapsed) parsed.collapsed={};
-    state = parsed; save(); render();
+    state = migrate(parsed); save(); render();
     jsonPanel.classList.remove('open');
   }catch(e){ document.getElementById('jsonErr').textContent = 'Ungültiges JSON: '+e.message; }
 });
