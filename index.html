@@ -59,6 +59,15 @@ textarea{width:100%;min-height:260px;font-family:'IBM Plex Mono',monospace;font-
 .panel .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .err{color:var(--warn);font-size:12px;margin-top:6px}
 .small{font-size:11px;color:var(--sub)}
+.searchbox{display:flex;align-items:center;gap:8px;flex:1;min-width:230px;max-width:460px}
+.searchbox input[type=search]{flex:1;font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.searchbox label{font-size:11.5px;color:var(--sub);white-space:nowrap;display:flex;align-items:center;gap:4px}
+#searchCount{font-size:11.5px;color:var(--sub);white-space:nowrap}
+mark{background:#f3d35a;color:#1c2321;border-radius:2px;padding:0 1px}
+.cell.hit .inner{outline:2px solid #f3d35a;outline-offset:-2px}
+.filebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 18px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-size:12.5px}
+.filebar.warn{background:var(--auto-soft)}
+.filebar .msg{flex:1;min-width:220px;line-height:1.4}
 footer{padding:20px;text-align:center;color:var(--sub);font-size:11.5px}
 </style>
 </head>
@@ -68,6 +77,11 @@ footer{padding:20px;text-align:center;color:var(--sub);font-size:11.5px}
     <h1>Bauplan-Vergleichsmatrix</h1>
     <p>Cluster × Varianten · Zelle anklicken zum Bearbeiten · Formeln mit <code>=</code></p>
   </div>
+  <div class="searchbox">
+    <input type="search" id="search" placeholder="Suchen … (Taste /)" autocomplete="off">
+    <label><input type="checkbox" id="searchFormulas"> Formeln</label>
+    <span id="searchCount"></span>
+  </div>
   <div class="toolbar">
     <button id="btnAddCluster">+ Cluster</button>
     <button id="btnAddVariant">+ Variante</button>
@@ -76,10 +90,12 @@ footer{padding:20px;text-align:center;color:var(--sub);font-size:11.5px}
     <button id="btnReset">Zurücksetzen</button>
   </div>
 </header>
+<div class="filebar" id="fileBar"></div>
+<input type="file" id="fileIn" accept=".js,.json,text/javascript,application/json" style="display:none">
 <main>
   <div class="tablewrap"><table id="table"></table></div>
   <p class="hint">
-    <b>⧉ neben dem Variantennamen</b> dupliziert diese Variante als Kopie direkt rechts daneben (Formeln werden auf die Kopie umgebogen). „+ Variante" legt eine leere Spalte mit Standardformeln an. Ja/Nein-Felder akzeptieren auch „ja"/„nein".<br>
+    <b>⧉ neben dem Variantennamen</b> dupliziert diese Variante als Kopie direkt rechts daneben (Formeln werden auf die Kopie umgebogen). „+ Variante" legt eine leere Spalte an, die nur die Formeln der letzten Variante übernimmt. Ja/Nein-Felder akzeptieren auch „ja"/„nein".<br>
     <b>Formeln:</b> Zelle anklicken, mit <code>=</code> beginnen, andere Zellen per <code>Cluster::Zeile::Variante</code> referenzieren, z. B. <code>=heizlast::wandverlust::folie+heizlast::dachverlust::folie</code>. Funktioniert clusterübergreifend, beliebig verschachtelt, mit +, −, *, /.<br>
     <b>Gelb hinterlegte Zeilen</b> (Zwischensumme, Gesamtsumme) sind fest automatisch berechnet und nicht direkt editierbar. Alle anderen Zeilen – auch die mit gelbem Rand markierten „Formel-Zeilen" – sind normale, editierbare Formelzellen wie in Excel; der Rand ist nur ein visueller Hinweis, dass hier üblicherweise eine Formel statt eines Rohwerts steht.<br>
     <b>„In Gesamtsumme?"</b> pro Kosten-Cluster: Ja/Nein-Umschalter. Nur bei „Ja" fließt die Zwischensumme dieses Clusters für diese Spalte in die Gesamtsumme ein.<br>
@@ -101,277 +117,16 @@ footer{padding:20px;text-align:center;color:var(--sub);font-size:11.5px}
 </main>
 <footer>Alle Daten bleiben lokal in diesem Browser · kein Server, kein Tracking</footer>
 
+<script src="bauplan-data.js" onerror="window.__noDataFile=1"></script>
 <script>
 const STORE_KEY = 'bauplan_matrix_v4';
 const mk = (id,label,unit,type)=>({id,label,unit:unit||'',type:type||'value'});
 const zsAuswahl = ()=>[mk('zwischensumme','Zwischensumme','€','auto'), mk('auswahl','In Gesamtsumme?','','select')];
+const isOn = v => v==='1' || v===1 || v===true || (typeof v==='string' && /^(ja|yes|true|an|1)$/i.test(v.trim()));
+const variantSpec = () => ({F:{}, D:{}, forced:new Set()});
 
 function starterData(){
-  const variants = [
-    {id:'folie', name:'Vorhangfassade Folie'},
-    {id:'gutex_wdvs', name:'Gutex WDVS'},
-    {id:'gutex_vhf', name:'Gutex Vorhangfassade'},
-    {id:'i_traeger', name:'I-Träger gedämmt'},
-    {id:'kvh', name:'Vollholz-Ständer (KVH)'}
-  ];
-
-  const clusters = [
-    {id:'geometrie', name:'Gebäude / Geometrie', costTerms:[], rows:[
-      mk('grundflaeche','Grundfläche','m²'), mk('geschossflaeche','Beheizte Geschossfläche','m²'),
-      mk('volumen','Beheiztes Gebäudevolumen','m³'), mk('wandlaenge','Außenwandlänge gesamt','m'),
-      mk('wandhoehe','Wandhöhe','m'), mk('kellerwandhoehe','Kellerwandhöhe erdberührt','m'),
-      mk('kellerwandflaeche','Kellerwandfläche erdberührt','m²','auto'), mk('dachflaeche','Dachfläche','m²'),
-      mk('fensterflaeche','Fensterfläche gesamt','m²','auto'), mk('tuerenflaeche','Türenfläche gesamt','m²','auto'),
-      mk('wandflaeche_brutto','Außenwandfläche brutto','m²','auto'), mk('wandflaeche_netto','Außenwandfläche netto','m²','auto')
-    ]},
-    {id:'anforderungen', name:'Planungsanforderungen', costTerms:[], rows:[
-      mk('heizlast','Norm-Heizlast','kW'), mk('heizlast_spezifisch','Spezifische Heizlast','W/m²','auto'),
-      mk('raumtemperatur','Auslegungstemperatur innen','°C'), mk('aussentemperatur','Norm-Außentemperatur','°C'),
-      mk('vorlauf_soll','Max. gewünschte Vorlauftemperatur','°C'), mk('ruecklauf_soll','Ziel-Rücklauftemperatur','°C'),
-      mk('luftwechsel','Auslegungs-Luftwechsel','1/h'), mk('u_wand_soll','Ziel-U-Wert Außenwand','W/m²K'),
-      mk('u_dach_soll','Ziel-U-Wert Dach','W/m²K'), mk('u_boden_soll','Ziel-U-Wert Boden','W/m²K'),
-      mk('u_fenster_soll','Ziel-U-Wert Fenster','W/m²K'), mk('home_assistant','Home-Assistant-Schnittstelle','','select'),
-      mk('api_offen','Offene API / lokale Schnittstelle','','select'), mk('modbus','Modbus / vergleichbare lokale Schnittstelle','','select'),
-      mk('sg_ready','SG-Ready / externe Ansteuerung','','select')
-    ]},
-    {id:'wand_raster', name:'Wand – Vergleichsraster', costTerms:[], rows:[
-      mk('rasterbreite','Element-/Ständerachsmaß','m'), mk('elementhoehe','Elementhöhe','m'), mk('elementbreite','Elementbreite','m'),
-      mk('elementanzahl','Wandelemente','Stk','auto'), mk('rasterfaktor','Rasterfaktor 62,5 cm','','auto'),
-      mk('standardhoehenfaktor','Höhenfaktor 2,50 m','','auto'), mk('elementflaeche','Fläche je Wandelement','m²','auto')
-    ]},
-    {id:'wand', name:'Wand', costTerms:[['material_menge','material_einzelpreis'],['aufwand_einbau']], rows:[
-      mk('staender','Ständerart',''), mk('daemmstaerke','Dämmstärke','mm'), mk('wanddicke','Gesamt-Wanddicke','mm'),
-      mk('uwert','U-Wert','W/m²K'), mk('luftspalt','Luftspaltstärke','mm'),
-      mk('elementbreite','Elementbreite','m'), mk('elementhoehe','Elementhöhe','m'), mk('elementanzahl','Wandelemente','Stk','auto'),
-      mk('staenderanzahl','Ständer','Stk','auto'), mk('flaeche_brutto','Wandfläche brutto','m²','auto'),
-      mk('flaeche_netto','Wandfläche netto','m²','auto'), mk('material_menge','Fläche (Baugruppe)','m²','auto'),
-      mk('material_einzelpreis','Einzelpreis Baugruppe','€/m²'), mk('aufwand_einbau','Einbau-Aufwand','€'),
-      ...zsAuswahl()
-    ]},
-    {id:'dach', name:'Dach', costTerms:[['kosten']], rows:[
-      mk('neigung','Neigung','°'), mk('laenge','Länge','m'), mk('breite','Breite','m'),
-      mk('flaeche','Fläche','m²','auto'), mk('uwert','U-Wert','W/m²K'), mk('spalt','Spaltstärke','mm'),
-      mk('kosten','Kosten','€'), ...zsAuswahl()
-    ]},
-    {id:'kellerboden', name:'Kellerboden', costTerms:[['schaumglas_menge','schaumglas_preis'],['aufwand']], rows:[
-      mk('aufbau','Aufbau-Typ',''), mk('flaeche','Bodenfläche','m²'), mk('schaumglas_menge','Schaumglasschotter','m³'),
-      mk('schaumglas_preis','Preis Schaumglas','€/m³'), mk('daemmstaerke','Dämmstärke gesamt','mm'),
-      mk('uwert','U-Wert','W/m²K'), mk('aufwand','Einbau-Aufwand','€'), ...zsAuswahl()
-    ]},
-    {id:'perimeterdaemmung', name:'Perimeterdämmung', costTerms:[['flaeche','preis_pro_m2'],['aufwand']], rows:[
-      mk('typ','Dämmstoff / System',''), mk('flaeche','Dämmfläche','m²'), mk('daemmstaerke','Dämmstärke','mm'),
-      mk('lambda','Wärmeleitfähigkeit λ','W/mK'), mk('uwert','U-Wert Bauteil','W/m²K'),
-      mk('volumen','Dämmstoffmenge','m³','auto'), mk('preis_pro_m2','Materialpreis','€/m²'),
-      mk('aufwand','Einbau / Erdarbeiten','€'), ...zsAuswahl()
-    ]},
-    {id:'horizontalsperre', name:'Horizontalsperre', costTerms:[['flaeche','preis_pro_m2'],['aufwand']], rows:[
-      mk('typ','Typ / System',''), mk('breite','Sperrbreite','m'), mk('laenge','Sperrlänge','m'),
-      mk('flaeche','Sperrfläche','m²','auto'), mk('preis_pro_m2','Materialpreis','€/m²'),
-      mk('aufwand','Einbau-Aufwand','€'), ...zsAuswahl()
-    ]},
-    {id:'wintergarten', name:'Wintergarten / Solarkamin', costTerms:[['flaeche','preis_pro_m2'],['aufwand']], rows:[
-      mk('typ','Wintergartentyp',''), mk('beheizt','Beheizt','','select'),
-      mk('thermisch_getrennt','Thermisch vom Gebäude getrennt','','select'),
-      mk('laenge','Länge','m'), mk('breite','Breite','m'), mk('hoehe','Höhe','m'),
-      mk('flaeche','Grundfläche','m²','auto'), mk('volumen','Volumen','m³','auto'),
-      mk('verglasung_flaeche','Verglasungsfläche','m²'), mk('verglasung_uwert','Uw-Wert Verglasung','W/m²K'),
-      mk('dach_flaeche','Dachfläche','m²'), mk('dach_uwert','U-Wert Dach','W/m²K'),
-      mk('wand_flaeche','Opake Wandfläche','m²'), mk('wand_uwert','U-Wert Wand','W/m²K'),
-      mk('anschlusswand','Anschluss an Hauswand (wird Innenwand)','m²'),
-      mk('flaechenheizung','Flächenheizung','m²'), mk('preis_pro_m2','Kosten Wintergarten','€/m²'),
-      mk('aufwand','Montage / Anschluss','€'), ...zsAuswahl()
-    ]},
-    {id:'normanforderungen', name:'Normanforderungen (Referenz, ohne Kosten)', costTerms:[], rows:[
-      mk('geg_wand','GEG-Referenzwert Außenwand','W/m²K'), mk('geg_dach','GEG-Referenzwert Dach/oberste Geschossdecke','W/m²K'),
-      mk('geg_kellerdecke','GEG-Referenzwert Kellerdecke/-boden','W/m²K'), mk('geg_fenster','GEG-Referenzwert Fenster','W/m²K'),
-      mk('eh40_wand','EH40-Zielwert Wand (max.)','W/m²K'), mk('eh40_dach','EH40-Zielwert Dach (max.)','W/m²K'),
-      mk('eh40_kellerdecke','EH40-Zielwert Kellerdecke (max.)','W/m²K'),
-      mk('wand_check','Prüfung: Wand-U-Wert','','auto'), mk('dach_check','Prüfung: Dach-U-Wert','','auto'),
-      mk('boden_check','Prüfung: Boden-U-Wert','','auto'), mk('fenster_check','Prüfung: Fenster Ø-Uw','','auto')
-    ]},
-    {id:'fenster', name:'Fenster (mehrere Typen)', costTerms:[['kosten']], rows:[
-      mk('typ1_label','Typ 1 – Bezeichnung',''), mk('typ1_anzahl','Typ 1 – Anzahl','Stk'),
-      mk('typ1_breite','Typ 1 – Breite','m'), mk('typ1_hoehe','Typ 1 – Höhe','m'),
-      mk('typ1_uwert','Typ 1 – Uw-Wert','W/m²K'), mk('typ1_gwert','Typ 1 – g-Wert',''),
-      mk('typ1_kosten_pro_stk','Typ 1 – Kosten je Element','€/Stk'),
-      mk('typ1_flaeche','Typ 1 – Fläche','m²','auto'), mk('typ1_kosten','Typ 1 – Kosten gesamt','€','auto'),
-      mk('typ2_label','Typ 2 – Bezeichnung',''), mk('typ2_anzahl','Typ 2 – Anzahl','Stk'),
-      mk('typ2_breite','Typ 2 – Breite','m'), mk('typ2_hoehe','Typ 2 – Höhe','m'),
-      mk('typ2_uwert','Typ 2 – Uw-Wert','W/m²K'), mk('typ2_gwert','Typ 2 – g-Wert',''),
-      mk('typ2_kosten_pro_stk','Typ 2 – Kosten je Element','€/Stk'),
-      mk('typ2_flaeche','Typ 2 – Fläche','m²','auto'), mk('typ2_kosten','Typ 2 – Kosten gesamt','€','auto'),
-      mk('typ3_label','Typ 3 – Bezeichnung',''), mk('typ3_anzahl','Typ 3 – Anzahl','Stk'),
-      mk('typ3_breite','Typ 3 – Breite','m'), mk('typ3_hoehe','Typ 3 – Höhe','m'),
-      mk('typ3_uwert','Typ 3 – Uw-Wert','W/m²K'), mk('typ3_gwert','Typ 3 – g-Wert',''),
-      mk('typ3_kosten_pro_stk','Typ 3 – Kosten je Element','€/Stk'),
-      mk('typ3_flaeche','Typ 3 – Fläche','m²','auto'), mk('typ3_kosten','Typ 3 – Kosten gesamt','€','auto'),
-      mk('flaeche','Fensterfläche gesamt (alle Typen)','m²','auto'),
-      mk('uwert_mittel','Ø Uw-Wert, flächengewichtet','W/m²K','auto'),
-      mk('kosten','Kosten gesamt (alle Typen)','€','auto'), ...zsAuswahl()
-    ]},
-    {id:'zwischendecke', name:'Zwischendecke', costTerms:[['material_menge','material_einzelpreis'],['aufwand_einbau']], rows:[
-      mk('typ','Deckentyp',''), mk('spannweite','Spannweite','m'), mk('deckenstaerke','Deckenstärke','mm'),
-      mk('schalldaemmmass','Schalldämmmaß (Referenz)','dB'), mk('flaeche','Fläche','m²','auto'),
-      mk('fuer_deckenheizung','Für Deckenheizung genutzt?','','select'),
-      mk('material_menge','Material-Menge','m²','auto'), mk('material_einzelpreis','Einzelpreis','€/m²'),
-      mk('aufwand_einbau','Einbau-Aufwand','€'), ...zsAuswahl()
-    ]},
-    {id:'tueren', name:'Türen', costTerms:[['kosten']], rows:[
-      mk('typ','Türtyp',''), mk('anzahl','Anzahl','Stk'), mk('breite','Breite','m'), mk('hoehe','Höhe','m'),
-      mk('flaeche','Fläche gesamt','m²','auto'), mk('uwert','U-Wert','W/m²K'),
-      mk('kosten_pro_stk','Kosten je Element','€/Stk'), mk('kosten','Kosten gesamt','€','auto'), ...zsAuswahl()
-    ]},
-    {id:'heizlast', name:'Heizlast – überschlägige Berechnung', costTerms:[], rows:[
-      mk('norm_aussentemperatur','Norm-Außentemperatur','°C'), mk('raumtemperatur','Auslegungs-Raumtemperatur','°C'),
-      mk('temperaturdifferenz','Temperaturdifferenz ΔT','K','auto'),
-      mk('wandverlust','Transmissionsverlust Wand','W','auto'), mk('dachverlust','Transmissionsverlust Dach','W','auto'),
-      mk('bodenverlust','Transmissionsverlust Boden','W','auto'), mk('fensterverlust','Transmissionsverlust Fenster','W','auto'),
-      mk('tuerverlust','Transmissionsverlust Türen','W','auto'), mk('wintergartenverlust','Verlust Wintergarten (falls beheizt)','W','auto'), mk('transmissionsverlust','Transmissionsverlust gesamt','W','auto'),
-      mk('volumen','Beheiztes Gebäudevolumen','m³'), mk('luftwechsel','Auslegungs-Luftwechsel','1/h'),
-      mk('luftverlust','Lüftungswärmeverlust','W','auto'),
-      mk('waermebrueckenfaktor','Wärmebrückenzuschlag','W/K'), mk('waermebrueckenverlust','Wärmebrückenverlust','W','auto'),
-      mk('heizlast','Heizlast überschlägig','kW','auto'), mk('beheizte_flaeche','Beheizte Fläche','m²'),
-      mk('heizlast_pro_m2','Spezifische Heizlast','W/m²','auto')
-    ]},
-    {id:'flaechenheizung', name:'Flächenheizung', costTerms:[['flaeche','kosten_pro_m2'],['verteiler_kosten']], rows:[
-      mk('typ','Typ',''), mk('heizlast','Auslegungs-Heizlast','kW','auto'), mk('heizleistung_pro_m2','Auslegungsleistung je Fläche','W/m²'),
-      mk('flaeche_erforderlich','Erforderliche Heizfläche','m²','auto'), mk('flaeche_verfuegbar','Verfügbare Heizfläche','m²'),
-      mk('flaeche_aktiv','Aktivierte Heizfläche','m²','auto'), mk('rohrabstand','Rohr-/Heizflächenabstand','cm'),
-      mk('vorlauf','Vorlauftemperatur Auslegung','°C'), mk('ruecklauf','Rücklauftemperatur Auslegung','°C'),
-      mk('raumtemperatur','Raumtemperatur','°C'), mk('kreise','Heizkreise','Stk','auto'), mk('kreislaenge','Rohrlänge je Heizkreis','m'),
-      mk('rohrlaenge','Rohrlänge gesamt','m','auto'), mk('kosten_pro_m2','Kosten Flächenheizung','€/m²'),
-      mk('flaeche','Menge Flächenheizung','m²','auto'), mk('verteiler_kosten','Heizkreisverteiler','€'), ...zsAuswahl()
-    ]},
-    {id:'graben', name:'Graben Sole-WP', costTerms:[['rohrlaenge_gesamt','rohrpreis_pro_m'],['baggerkosten']], rows:[
-      mk('entzugsleistung','Entzugsleistung','kW','auto'), mk('leistung_pro_kreis','Entzugsleistung je Kreis (konservativ)','kW'),
-      mk('kreisanzahl','Kreisanzahl','Stk','auto'),
-      mk('rohrlaenge_pro_kreis','Rohrlänge je Kreis','m'), mk('rohrlaenge_gesamt','Rohrlänge gesamt','m','auto'),
-      mk('grabentiefe','Grabentiefe','m'), mk('grabenbreite','Grabenbreite','m'),
-      mk('rohrpreis_pro_m','Rohrpreis','€/m'), mk('baggerkosten','Erdarbeiten-Aufwand','€'), ...zsAuswahl()
-    ]},
-    {id:'bivalenz', name:'Bivalenzpunkt / Heizstab', costTerms:[['heizstab_preis'],['aufwand_einbau']], rows:[
-      mk('luecke','Restlast bei Norm-Außentemp. nach WP','kW','auto'), mk('bivalenztemperatur','Bivalenztemperatur (berechnet)','°C','auto'),
-      mk('heizstableistung','Heizstab-Leistung (gewählt)','kW'),
-      mk('wp_deckungsanteil','WP-Deckungsanteil Jahresarbeit','%'), mk('heizstab_preis','Heizstab-Preis','€'),
-      mk('aufwand_einbau','Einbau-Aufwand','€'), ...zsAuswahl()
-    ]},
-    {id:'haustechnik', name:'Haustechnik', costTerms:[['kosten']], rows:[
-      mk('waermequelle','Wärmequelle',''), mk('heizlast','Norm-Heizlast','kW','auto'), mk('personen','Personenzahl (Warmwasser)','Pers.'),
-      mk('ww_zuschlag','Warmwasser-Zuschlag','kW','auto'), mk('sicherheitsfaktor','Auslegungsfaktor (1,0 = keine Reserve)',''),
-      mk('wp_soll','Erforderliche WP-Heizleistung','kW','auto'),
-      mk('wp_leistung','WP-Heizleistung gewählt (Datenblatt)','kW'),
-      mk('reserve','Leistungsreserve (gewählt − erforderlich)','kW','auto'),
-      mk('cop','COP-Annahme B0/W35',''), mk('entzug','Entzugsleistung aus Erdreich','kW','auto'), mk('modulationsbereich','Modulationsbereich','kW'), mk('vorlauf_auslegung','Vorlauftemperatur Auslegung','°C','auto'),
-      mk('puffer','Pufferspeicher','l'), mk('warmwasser','Warmwasserspeicher','l'),
-      mk('home_assistant','Home-Assistant-Anbindung','','select'), mk('schnittstelle','Offene Schnittstelle',''),
-      mk('lokale_steuerung','Lokale Steuerung ohne Cloud','','select'), mk('kosten','Kosten','€'), ...zsAuswahl()
-    ]},
-    {id:'pv', name:'PV', costTerms:[['kosten']], rows:[
-      mk('flaeche','Fläche','m²'), mk('ausrichtung','Ausrichtung',''), mk('kwp','Leistung','kWp'),
-      mk('kosten','Kosten','€'), ...zsAuswahl()
-    ]},
-    {id:'elektrik', name:'Elektrik', costTerms:[['kosten']], rows:[
-      mk('verteiler','Verteiler',''), mk('kosten','Kosten','€'), ...zsAuswahl()
-    ]},
-    {id:'gesamt', name:'Gesamt', costTerms:[], rows:[
-      mk('gesamtsumme','Gesamtsumme (nur „Ja"-Cluster)','€','grandtotal')
-    ]}
-  ];
-
-  const values = {};
-  return {variants, clusters, values, collapsed:{}};
-}
-
-
-const SCHEMA = 5;
-const isOn = v => { if(v===undefined||v===null) return false; const t=String(v).trim().toLowerCase(); return t==='1'||t==='true'||t==='x'||t==='yes'||t.startsWith('ja'); };
-
-// Formelvorlagen je Variante. @cluster.zeile => cluster::zeile::<diese Variante>
-function variantSpec(id){
-  const at = t => t.replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g, (m,c,r)=>c+'::'+r+'::'+id);
-  const F={}, D={}, forced=new Set();
-  const f=(c,r,expr,force)=>{ const k=c+'::'+r+'::'+id; F[k]=at('='+expr); if(force) forced.add(k); };
-  const d=(c,r,val)=>{ D[c+'::'+r+'::'+id]=String(val); };
-  f('geometrie','kellerwandflaeche','@geometrie.wandlaenge*@geometrie.kellerwandhoehe');
-  f('geometrie','dachflaeche','@dach.flaeche',true);
-  f('dach','flaeche','@dach.laenge*@dach.breite/Math.cos(@dach.neigung*Math.PI/180)',true);
-  f('wand','flaeche_brutto','@geometrie.wandlaenge*@geometrie.wandhoehe');
-  f('wand','flaeche_netto','@wand.flaeche_brutto-@fenster.flaeche-@tueren.flaeche-@wintergarten.anschlusswand*@wintergarten.auswahl*@wintergarten.beheizt');
-  f('wand','material_menge','@wand.flaeche_netto');
-  f('wand','elementanzahl','@wand.elementbreite*@wand.elementhoehe==0?0:Math.ceil(@wand.flaeche_brutto/(@wand.elementbreite*@wand.elementhoehe))',true);
-  f('wand','staenderanzahl','@wand.achsmass==0?0:@wand.elementanzahl*Math.ceil(@wand.elementbreite/@wand.achsmass)',true);
-  [1,2,3].forEach(n=>{
-    f('fenster','typ'+n+'_flaeche',`@fenster.typ${n}_anzahl*@fenster.typ${n}_breite*@fenster.typ${n}_hoehe`);
-    f('fenster','typ'+n+'_kosten',`@fenster.typ${n}_anzahl*@fenster.typ${n}_kosten_pro_stk`);
-  });
-  f('fenster','flaeche','@fenster.typ1_flaeche+@fenster.typ2_flaeche+@fenster.typ3_flaeche');
-  f('fenster','kosten','@fenster.typ1_kosten+@fenster.typ2_kosten+@fenster.typ3_kosten');
-  f('fenster','uwert_mittel','@fenster.flaeche==0?0:(@fenster.typ1_flaeche*@fenster.typ1_uwert+@fenster.typ2_flaeche*@fenster.typ2_uwert+@fenster.typ3_flaeche*@fenster.typ3_uwert)/@fenster.flaeche');
-  f('tueren','flaeche','@tueren.anzahl*@tueren.breite*@tueren.hoehe');
-  f('kellerboden','flaeche','@geometrie.grundflaeche');
-  f('perimeterdaemmung','flaeche','@geometrie.kellerwandflaeche');
-  f('perimeterdaemmung','volumen','@perimeterdaemmung.flaeche*@perimeterdaemmung.daemmstaerke/1000');
-  f('horizontalsperre','laenge','@geometrie.wandlaenge');
-  f('horizontalsperre','flaeche','@horizontalsperre.breite*@horizontalsperre.laenge');
-  f('wintergarten','flaeche','@wintergarten.laenge*@wintergarten.breite');
-  f('wintergarten','volumen','@wintergarten.flaeche*@wintergarten.hoehe');
-  f('zwischendecke','flaeche','@geometrie.grundflaeche');
-  f('zwischendecke','material_menge','@zwischendecke.flaeche');
-  f('ausbau','flaeche','@geometrie.geschossflaeche');
-  f('heizlast','temperaturdifferenz','@anforderungen.raumtemperatur-@anforderungen.aussentemperatur',true);
-  f('heizlast','wandverlust','@wand.flaeche_netto*@wand.uwert*@heizlast.temperaturdifferenz',true);
-  f('heizlast','dachverlust','@dach.flaeche*@dach.uwert*@heizlast.temperaturdifferenz',true);
-  f('heizlast','bodenverlust','@kellerboden.flaeche*@kellerboden.uwert*@heizlast.temperaturdifferenz*@heizlast.erdreich_faktor',true);
-  f('heizlast','kellerwandverlust','@geometrie.keller_beheizt*@geometrie.kellerwandflaeche*@perimeterdaemmung.uwert*@heizlast.temperaturdifferenz*@heizlast.erdreich_faktor',true);
-  f('heizlast','fensterverlust','(@fenster.typ1_flaeche*@fenster.typ1_uwert+@fenster.typ2_flaeche*@fenster.typ2_uwert+@fenster.typ3_flaeche*@fenster.typ3_uwert)*@heizlast.temperaturdifferenz',true);
-  f('heizlast','tuerverlust','@tueren.flaeche*@tueren.uwert*@heizlast.temperaturdifferenz',true);
-  f('heizlast','wintergartenverlust','@wintergarten.auswahl*@wintergarten.beheizt*(@wintergarten.verglasung_flaeche*@wintergarten.verglasung_uwert+@wintergarten.dach_flaeche*@wintergarten.dach_uwert+@wintergarten.wand_flaeche*@wintergarten.wand_uwert)*@heizlast.temperaturdifferenz',true);
-  f('heizlast','transmissionsverlust','@heizlast.wandverlust+@heizlast.dachverlust+@heizlast.bodenverlust+@heizlast.kellerwandverlust+@heizlast.fensterverlust+@heizlast.tuerverlust+@heizlast.wintergartenverlust',true);
-  f('heizlast','luftverlust','0.34*@anforderungen.luftwechsel*@geometrie.volumen*@heizlast.volumenfaktor*@heizlast.temperaturdifferenz',true);
-  f('heizlast','waermebrueckenverlust','@heizlast.waermebrueckenfaktor*@heizlast.temperaturdifferenz',true);
-  f('heizlast','heizlast','(@heizlast.transmissionsverlust+@heizlast.luftverlust+@heizlast.waermebrueckenverlust)/1000',true);
-  f('heizlast','heizlast_pro_m2','@geometrie.geschossflaeche==0?0:@heizlast.heizlast*1000/@geometrie.geschossflaeche',true);
-  f('flaechenheizung','heizlast','@heizlast.heizlast',true);
-  f('flaechenheizung','flaeche_erforderlich','@flaechenheizung.heizleistung_pro_m2==0?0:@heizlast.heizlast*1000/@flaechenheizung.heizleistung_pro_m2',true);
-  f('flaechenheizung','flaeche_verfuegbar','@flaechenheizung.nutzt_boden*@geometrie.geschossflaeche*0.8+@flaechenheizung.nutzt_decke*@zwischendecke.flaeche*0.8+@flaechenheizung.nutzt_wand*@wand.flaeche_netto*0.4',true);
-  f('flaechenheizung','flaeche_aktiv','Math.min(@flaechenheizung.flaeche_erforderlich,@flaechenheizung.flaeche_verfuegbar)',true);
-  f('flaechenheizung','flaeche','@flaechenheizung.flaeche_aktiv',true);
-  f('flaechenheizung','kreise','@flaechenheizung.flaeche_pro_kreis==0?0:Math.ceil(@flaechenheizung.flaeche_aktiv/@flaechenheizung.flaeche_pro_kreis)',true);
-  f('flaechenheizung','rohrlaenge','@flaechenheizung.kreise*@flaechenheizung.kreislaenge',true);
-  f('haustechnik','heizlast','@heizlast.heizlast',true);
-  f('haustechnik','vorlauf_auslegung','@flaechenheizung.vorlauf');
-  f('haustechnik','ww_zuschlag','@haustechnik.personen*0.2');
-  f('haustechnik','wp_soll','(@haustechnik.heizlast+@haustechnik.ww_zuschlag)*@haustechnik.sicherheitsfaktor');
-  f('haustechnik','reserve','@haustechnik.wp_leistung==0?"–":@haustechnik.wp_leistung-@haustechnik.wp_soll');
-  f('haustechnik','entzug','(@haustechnik.wp_leistung==0?@haustechnik.wp_soll:@haustechnik.wp_leistung)*(1-1/@haustechnik.cop)');
-  f('graben','entzugsleistung','@haustechnik.entzug');
-  f('graben','kreisanzahl','@graben.leistung_pro_kreis==0?0:Math.ceil(@graben.entzugsleistung/@graben.leistung_pro_kreis)');
-  f('graben','rohrlaenge_gesamt','@graben.kreisanzahl*@graben.rohrlaenge_pro_kreis');
-  f('bivalenz','luecke','@haustechnik.wp_leistung==0?"–":Math.max(0,@haustechnik.heizlast-(@haustechnik.wp_leistung-@haustechnik.ww_zuschlag))');
-  f('bivalenz','bivalenztemperatur','@haustechnik.wp_leistung==0?"–":@anforderungen.raumtemperatur-((@haustechnik.wp_leistung-@haustechnik.ww_zuschlag)/@haustechnik.heizlast)*(@anforderungen.raumtemperatur-@anforderungen.aussentemperatur)');
-  f('normanforderungen','wand_check','@wand.uwert==0?"–":(@wand.uwert<=(@anforderungen.u_wand_soll==0?@normanforderungen.eh40_wand:@anforderungen.u_wand_soll)?"OK":"über Ziel")',true);
-  f('normanforderungen','dach_check','@dach.uwert==0?"–":(@dach.uwert<=(@anforderungen.u_dach_soll==0?@normanforderungen.eh40_dach:@anforderungen.u_dach_soll)?"OK":"über Ziel")',true);
-  f('normanforderungen','boden_check','@kellerboden.uwert==0?"–":(@kellerboden.uwert<=(@anforderungen.u_boden_soll==0?@normanforderungen.eh40_kellerdecke:@anforderungen.u_boden_soll)?"OK":"über Ziel")',true);
-  f('normanforderungen','fenster_check','@fenster.uwert_mittel==0?"–":(@fenster.uwert_mittel<=(@anforderungen.u_fenster_soll==0?@normanforderungen.geg_fenster:@anforderungen.u_fenster_soll)?"OK":"über Ziel")',true);
-  f('pv','flaeche_max','@dach.flaeche*@pv.belegungsgrad');
-  f('pv','kwp_max','@pv.flaeche_max*@pv.wp_pro_m2/1000');
-  f('pv','pv_check','@pv.flaeche==0?"–":(@pv.flaeche<=@pv.flaeche_max?"OK":"größer als nutzbare Dachfläche")');
-  f('pv','jahresertrag','@pv.kwp*@pv.spez_ertrag');
-  f('betrieb','heizwaerme','@heizlast.heizlast*@betrieb.vollbenutzungsstunden');
-  f('betrieb','ww_bedarf','@haustechnik.personen*800');
-  f('betrieb','jaz','@haustechnik.cop*0.9');
-  f('betrieb','wp_strom','@betrieb.jaz==0?0:(@betrieb.heizwaerme+@betrieb.ww_bedarf)/@betrieb.jaz');
-  f('betrieb','pv_ertrag','@pv.jahresertrag');
-  f('betrieb','pv_verhaeltnis','@betrieb.wp_strom==0?0:@betrieb.pv_ertrag/@betrieb.wp_strom');
-  [['heizlast','waermebrueckenfaktor',15],['heizlast','erdreich_faktor',0.6],['heizlast','volumenfaktor',0.76],
-   ['geometrie','keller_beheizt',1],['wand','achsmass',0.625],
-   ['flaechenheizung','heizleistung_pro_m2',70],['flaechenheizung','kreislaenge',80],['flaechenheizung','flaeche_pro_kreis',15],['flaechenheizung','nutzt_boden',1],
-   ['haustechnik','personen',4],['haustechnik','sicherheitsfaktor',1],['haustechnik','cop',4.5],
-   ['graben','leistung_pro_kreis',3],['graben','rohrlaenge_pro_kreis',300],['graben','grabentiefe',1.8],['graben','grabenbreite',1.2],
-   ['pv','belegungsgrad',0.8],['pv','wp_pro_m2',210],['pv','spez_ertrag',900],['betrieb','vollbenutzungsstunden',1200],
-   ['anforderungen','raumtemperatur',20],['anforderungen','aussentemperatur',-13],['anforderungen','luftwechsel',0.5]
-  ].forEach(x=>d(x[0],x[1],x[2]));
-  return {F,D,forced};
+  return {clusters:[], variants:[], values:{}, collapsed:{}, schema:6, savedAt:0};
 }
 function applyVariantFormulas(st,id,force){
   const {F,D,forced}=variantSpec(id);
@@ -379,10 +134,7 @@ function applyVariantFormulas(st,id,force){
   Object.entries(F).forEach(([k,v])=>{ const cur=st.values[k]; if(cur===undefined||cur===''||(force&&forced.has(k))) st.values[k]=v; });
 }
 
-function migrate(st){
-  if(!st.values) st.values={};
-  if(!st.collapsed) st.collapsed={};
-  if((st.schema||0) >= SCHEMA) return st;
+function migrate5(st){
   const C = id => st.clusters.find(c=>c.id===id);
   const zd = C('zwischendecke');
   if(zd) st.variants.forEach(v=>{ const k='zwischendecke::fuer_deckenheizung::'+v.id; if(st.values[k]!==undefined) st.values['flaechenheizung::nutzt_decke::'+v.id]=isOn(st.values[k])?'1':'0'; });
@@ -428,7 +180,114 @@ function migrate(st){
   const validRows=new Set(); st.clusters.forEach(c=>c.rows.forEach(r=>validRows.add(c.id+'::'+r.id)));
   const validVar=new Set(st.variants.map(v=>v.id));
   Object.keys(st.values).forEach(k=>{ const [c,r,v]=k.split('::'); if(!validRows.has(c+'::'+r)||!validVar.has(v)) delete st.values[k]; });
-  st.schema=SCHEMA;
+  st.schema=5;
+  return st;
+}
+
+// Schema 6: nur ergänzend, überschreibt keine bestehenden Formeln/Eingaben
+function migrate6(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const ins=(cid,after,rows)=>{
+    const c=C(cid); if(!c) return;
+    rows=rows.filter(r=>!c.rows.some(x=>x.id===r.id)); if(!rows.length) return;
+    let i=c.rows.findIndex(x=>x.id===after);
+    if(i>=0) i=i+1; else { i=c.rows.findIndex(x=>x.id==='zwischensumme'); if(i<0) i=c.rows.length; }
+    c.rows.splice(i,0,...rows);
+  };
+  ins('geometrie','geschossflaeche',[mk('nutzflaechenfaktor','Nutzflächenfaktor (Nutzfläche ÷ BGF)',''),mk('nutzflaeche','Nutzfläche überschlägig','m²','auto')]);
+  ins('heizlast','heizlast_pro_m2',[
+    mk('heizlast_n05','Vergleich: Heizlast bei n = 0,5 1/h','kW','auto'),
+    mk('heizlast_n06','Vergleich: Heizlast bei n = 0,6 1/h','kW','auto'),
+    mk('luecke_n06','WP-Lücke bei n = 0,6 1/h','kW','auto'),
+    mk('heizlast_pro_nutzflaeche','Heizlast je Nutzfläche','W/m²','auto')]);
+  ins('rohbau_keller','none',[mk('bodenplatte_dicke','Dicke Bodenplatte','m'),mk('kellerwand_dicke','Dicke Kellerwand','m')]);
+  const pv=C('pv');
+  if(pv){
+    ins('pv','kosten',[mk('module_anzahl','Module gesamt','Stk','auto'),mk('modul_preis','Preis je Modul','€/Stk'),mk('wr_preis','Wechselrichter','€'),mk('speicher_preis','Batteriespeicher','€'),mk('montage','Unterkonstruktion / Montage / Elektro','€')]);
+    pv.costTerms=[['kosten'],['module_anzahl','modul_preis'],['wr_preis'],['speicher_preis'],['montage']];
+    const k=pv.rows.find(r=>r.id==='kosten'); if(k) k.label='Pauschale / Sonstiges (zusätzlich zu Einzelposten)';
+  }
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>t.replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined) st.values[k]=at(String(val)); };
+    set('geometrie','nutzflaechenfaktor','0.78');
+    set('geometrie','nutzflaeche','=@geometrie.geschossflaeche*@geometrie.nutzflaechenfaktor');
+    ['05','06'].forEach(n=>set('heizlast','heizlast_n'+n,'=(@heizlast.transmissionsverlust+@heizlast.waermebrueckenverlust+0.34*0.'+n.slice(1)+'*@geometrie.volumen*@heizlast.temperaturdifferenz)/1000'));
+    set('heizlast','luecke_n06','=@haustechnik.wp_leistung==0?"–":Math.max(0,@heizlast.heizlast_n06-@haustechnik.wp_leistung)');
+    set('heizlast','heizlast_pro_nutzflaeche','=@geometrie.nutzflaeche==0?0:@heizlast.heizlast*1000/@geometrie.nutzflaeche');
+    set('rohbau_keller','bodenplatte_dicke','0.3'); set('rohbau_keller','kellerwand_dicke','0.3');
+    set('rohbau_keller','beton_menge','=@geometrie.grundflaeche*@rohbau_keller.bodenplatte_dicke+@geometrie.kellerwandflaeche*@rohbau_keller.kellerwand_dicke');
+    set('pv','module_anzahl','=@pv.so_module+@pv.nw_module');
+  });
+  st.schema=6;
+  return st;
+}
+
+// Schema 7: Genauere Kostenschätzungen und Formeln für Dach, Wintergarten, Graben, Türen
+function migrate7(st){
+  // Alte grabenl_nge Werte auf neue ID migrieren
+  st.variants.forEach(v=>{
+    const oldKey='graben::grabenl_nge::'+v.id;
+    const newKey='graben::grabenlaenge::'+v.id;
+    if(st.values[oldKey]!==undefined && st.values[newKey]===undefined){
+      st.values[newKey]=st.values[oldKey];
+      delete st.values[oldKey];
+    }
+  });
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>t.replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined) st.values[k]=at(String(val)); };
+
+    // Dach – realistischere Kostenvoranschläge
+    set('dach','preis_pro_m2','220');
+    set('dach','aufwand','=@dach.flaeche*50');
+    set('dach','kosten','0');
+
+    // Wintergarten – sinnvolle Defaults & Formeln
+    set('wintergarten','laenge','4');
+    set('wintergarten','breite','3');
+    set('wintergarten','hoehe','2.8');
+    set('wintergarten','flaeche','=@wintergarten.laenge*@wintergarten.breite');
+    set('wintergarten','volumen','=@wintergarten.flaeche*@wintergarten.hoehe');
+    set('wintergarten','verglasung_flaeche','=(@wintergarten.laenge+@wintergarten.breite)*2*@wintergarten.hoehe*0.6');
+    set('wintergarten','dach_flaeche','=@wintergarten.laenge*@wintergarten.breite');
+    set('wintergarten','wand_flaeche','=(@wintergarten.laenge+@wintergarten.breite)*2*@wintergarten.hoehe*0.35');
+    set('wintergarten','anschlusswand','=@wintergarten.laenge*@wintergarten.hoehe');
+    set('wintergarten','flaechenheizung','=@wintergarten.flaeche');
+    set('wintergarten','beheizt','1');
+    set('wintergarten','thermisch_getrennt','1');
+    set('wintergarten','verglasung_uwert','0.9');
+    set('wintergarten','dach_uwert','0.9');
+    set('wintergarten','wand_uwert','0.9');
+    set('wintergarten','preis_pro_m2','1500');
+    set('wintergarten','aufwand','3000');
+
+    // Graben – Defaults und Aushub-Formel
+    set('graben','grabenlaenge','80');
+    set('graben','grabentiefe','1.2');
+    set('graben','grabenbreite','0.8');
+    set('graben','aushubvolumen','=@graben.grabenlaenge*@graben.grabentiefe*@graben.grabenbreite');
+    set('graben','rohrpreis_pro_m','8');
+    set('graben','baggerkosten','=@graben.aushubvolumen*35');
+
+    // Türen – korrigierte Formeln
+    set('tueren','anzahl','2');
+    set('tueren','breite','1.0');
+    set('tueren','hoehe','2.1');
+    set('tueren','kosten_pro_stk','1500');
+    set('tueren','flaeche','=@tueren.anzahl*@tueren.breite*@tueren.hoehe');
+    set('tueren','kosten','=@tueren.anzahl*@tueren.kosten_pro_stk');
+  });
+  st.schema=7;
+  return st;
+}
+
+function migrate(st){
+  if(!st.values) st.values={};
+  if(!st.collapsed) st.collapsed={};
+  if((st.schema||0)<5) migrate5(st);
+  if((st.schema||0)<6) migrate6(st);
+  if((st.schema||0)<7) migrate7(st);
   return st;
 }
 
@@ -449,9 +308,17 @@ function duplicateVariantData(idx){
   return nid;
 }
 function addBlankVariant(name){
+  // Leere Spalte: übernimmt nur die Formeln der letzten Variante (Eingaben bleiben leer)
   const id=uniqueVariantId(slug(name));
+  const src=state.variants[state.variants.length-1];
   state.variants.push({id,name});
-  applyVariantFormulas(state,id,false);
+  if(src){
+    const re=new RegExp('::'+src.id+'(?![A-Za-z0-9_])','g');
+    Object.keys(state.values).forEach(k=>{
+      if(k.endsWith('::'+src.id)){ const v=state.values[k];
+        if(typeof v==='string' && v.startsWith('=')) state.values[k.slice(0,k.length-src.id.length)+id]=v.replace(re,'::'+id); }
+    });
+  } else applyVariantFormulas(state,id,false);
   return id;
 }
 function removeVariantData(idx){
@@ -460,19 +327,144 @@ function removeVariantData(idx){
   state.variants.splice(idx,1);
 }
 
+let loadSource='none', fileHandle=null, needPermission=false, dirtyFile=false, writeTimer=null, lastFileSave=null, fileMsg='';
+const FS_OK = typeof window.showSaveFilePicker==='function' && typeof window.showOpenFilePicker==='function';
 let state = load();
+dirtyFile = loadSource!=='file';
 let legacyV3 = null;
 try{ legacyV3 = localStorage.getItem('bauplan_matrix_v3'); }catch(e){}
 
 function load(){
-  try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(raw) return migrate(JSON.parse(raw));
-  }catch(e){ console.warn('Storage read failed', e); }
-  return migrate(starterData());
+  let local=null, file=null;
+  try{ const raw=localStorage.getItem(STORE_KEY); if(raw) local=JSON.parse(raw); }catch(e){ console.warn('Storage read failed', e); }
+  try{ if(window.BAUPLAN_DATA && window.BAUPLAN_DATA.clusters) file=JSON.parse(JSON.stringify(window.BAUPLAN_DATA)); }catch(e){ console.warn('File data read failed', e); }
+  const empty = starterData();
+  let pick=null;
+  if(!local && !file){ pick=empty; loadSource='none'; }
+  else if(!local){ pick=file; loadSource='file'; }
+  else if(!file){ pick=local; loadSource='local'; }
+  else if((file.savedAt||0) > (local.savedAt||0)){ pick=file; loadSource='file'; }
+  else if((local.savedAt||0) > (file.savedAt||0)){ pick=local; loadSource='local-newer'; }
+  else { pick=local; loadSource='file'; } // identisch
+  if(local && file && (file.savedAt||0) < (local.savedAt||0)){
+    const fileClusters = file.clusters.map(c=>c.id).join(',');
+    const localClusters = local.clusters.map(c=>c.id).join(',');
+    if(fileClusters !== localClusters || JSON.stringify(file.variants)!==JSON.stringify(local.variants)){
+      pick = JSON.parse(JSON.stringify(local));
+      pick.clusters = file.clusters;
+      pick.variants = file.variants;
+      Object.keys(file.values||{}).forEach(k=>{ if(!(k in (pick.values||{}))) pick.values[k]=file.values[k]; });
+      loadSource='merged';
+    }
+  }
+  return migrate(pick||empty);
 }
 function save(){
+  state.savedAt=Math.floor(Date.now()/1000)*1000; // Sekunden-Präzision → weniger Datei-Änderungen
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){ console.warn('Storage write failed', e); }
+  dirtyFile=true; updateFileBar(); scheduleFileWrite();
+}
+
+// ---- Datei-Ebene: bauplan-data.js neben der HTML-Datei
+function serialize(){ return 'window.BAUPLAN_DATA = '+JSON.stringify(state,null,1)+';\n'; }
+function parseDataText(txt){
+  try{ return JSON.parse(txt.replace(/^\s*window\.BAUPLAN_DATA\s*=\s*/,'').replace(/;\s*$/,'')); }catch(e){ return null; }
+}
+function setFileMsg(t){ fileMsg=t; updateFileBar(); }
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('bauplan_files',1); r.onupgradeneeded=()=>r.result.createObjectStore('h'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbGet(k){ const db=await idb(); return new Promise((res,rej)=>{ const q=db.transaction('h').objectStore('h').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+async function idbSet(k,v){ const db=await idb(); return new Promise((res,rej)=>{ const q=db.transaction('h','readwrite').objectStore('h').put(v,k); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); }); }
+const PICK_TYPES=[{description:'Bauplan-Daten (JS)',accept:{'text/javascript':['.js']}}];
+async function readFromHandle(){
+  try{
+    const f=await fileHandle.getFile(); const parsed=parseDataText(await f.text());
+    if(parsed && parsed.clusters){
+      if((parsed.savedAt||0) > (state.savedAt||0)){
+        state=migrate(parsed); try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+        dirtyFile=false; loadSource='file'; render();
+      } else if((parsed.savedAt||0) === (state.savedAt||0)){
+        dirtyFile=false; loadSource='file';
+      }
+    }
+  }catch(e){ fileMsg='Datei nicht lesbar: '+e.message; }
+}
+async function writeFileNow(){
+  if(!fileHandle) return;
+  try{
+    const perm=await fileHandle.queryPermission({mode:'readwrite'});
+    if(perm!=='granted'){ needPermission=true; updateFileBar(); return; }
+    const w=await fileHandle.createWritable(); await w.write(serialize()); await w.close();
+    dirtyFile=false; lastFileSave=new Date(); needPermission=false; fileMsg=''; loadSource='file'; updateFileBar();
+  }catch(e){ setFileMsg('Schreiben fehlgeschlagen: '+e.message); }
+}
+function scheduleFileWrite(){ if(!fileHandle||needPermission) return; clearTimeout(writeTimer); writeTimer=setTimeout(writeFileNow,5000); }
+async function attachHandle(h){
+  fileHandle=h;
+  try{ await idbSet('handle',h); }catch(e){}
+  const p=await h.requestPermission({mode:'readwrite'});
+  needPermission = p!=='granted';
+  if(!needPermission){ await readFromHandle(); if(dirtyFile) await writeFileNow(); }
+  updateFileBar();
+}
+async function openFile(){
+  try{ const [h]=await window.showOpenFilePicker({types:PICK_TYPES,multiple:false}); await attachHandle(h); }
+  catch(e){ if(e.name!=='AbortError') setFileMsg('Verbinden nicht möglich ('+e.name+'): In dieser Ansicht/diesem Browser gesperrt – bitte die HTML-Datei lokal in Chrome/Edge öffnen oder „Datei herunterladen" nutzen.'); }
+}
+async function newFile(){
+  try{ const h=await window.showSaveFilePicker({suggestedName:'bauplan-data.js',types:PICK_TYPES}); await attachHandle(h); dirtyFile=true; await writeFileNow(); }
+  catch(e){ if(e.name!=='AbortError') setFileMsg('Anlegen nicht möglich ('+e.name+'): In dieser Ansicht/diesem Browser gesperrt – bitte lokal in Chrome/Edge öffnen oder „Datei herunterladen" nutzen.'); }
+}
+async function grantPermission(){
+  try{ const p=await fileHandle.requestPermission({mode:'readwrite'}); needPermission = p!=='granted';
+    if(!needPermission){ await readFromHandle(); if(dirtyFile) await writeFileNow(); } }catch(e){ fileMsg=e.message; }
+  updateFileBar();
+}
+async function detachFile(){ fileHandle=null; needPermission=false; try{ await idbSet('handle',null); }catch(e){} updateFileBar(); }
+function downloadFile(){
+  const blob=new Blob([serialize()],{type:'text/javascript'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='bauplan-data.js';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  dirtyFile=false; loadSource='file'; lastFileSave=new Date(); updateFileBar();
+}
+async function restoreHandle(){
+  if(!FS_OK) return;
+  try{
+    const h=await idbGet('handle'); if(!h) return;
+    fileHandle=h;
+    const perm=await h.queryPermission({mode:'readwrite'});
+    needPermission = perm!=='granted';
+    if(!needPermission){ await readFromHandle(); if(dirtyFile) await writeFileNow(); }
+  }catch(e){ console.warn(e); }
+  updateFileBar();
+}
+let lastBarState='';
+function updateFileBar(){
+  const bar=document.getElementById('fileBar'); if(!bar) return;
+  const fmt=d=>d?d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';
+  let text='', warn=false;
+  let buttons=[];
+  if(fileHandle && !needPermission){
+    text='✓ Verbunden mit '+fileHandle.name+' – Änderungen werden automatisch gespeichert'+(lastFileSave?' (zuletzt '+fmt(lastFileSave)+')':'')+(dirtyFile?' …':'');
+    buttons=[{t:'Jetzt speichern',fn:writeFileNow},{t:'Trennen',fn:detachFile}];
+  } else if(fileHandle){
+    text='Datei '+fileHandle.name+' bekannt – der Schreibzugriff muss einmal pro Sitzung bestätigt werden.'; warn=true;
+    buttons=[{t:'Zugriff erlauben',fn:grantPermission,cls:'primary'},{t:'Trennen',fn:detachFile}];
+  } else {
+    text = dirtyFile ? '⚠ Änderungen sind nur im Browser gespeichert (nicht in einer Datei).' : '✓ Stand entspricht der Datei'+(lastFileSave?' (heruntergeladen '+fmt(lastFileSave)+')':'')+'.';
+    warn = dirtyFile;
+    if(FS_OK){ buttons.push({t:'Datei verbinden…',fn:openFile,cls:'primary'},{t:'Neue Datei anlegen…',fn:newFile}); }
+    buttons.push({t:'Datei herunterladen ⬇',fn:downloadFile});
+  }
+  if(loadSource==='file' && !lastFileSave) text='Stand aus bauplan-data.js geladen. '+text;
+  if(loadSource==='local-newer'){ text='⚠ Der Browser-Stand ist neuer als bauplan-data.js. '+text; warn=true; }
+  if(fileMsg) text+=' · '+fileMsg;
+  buttons.push({t:'Datei laden ⬆',fn:()=>document.getElementById('fileIn').click()});
+  const stateHash=text+'|'+warn+'|'+buttons.map(b=>b.t+(b.cls||'')).join('|');
+  if(lastBarState===stateHash) return;
+  lastBarState=stateHash;
+  bar.innerHTML=''; bar.className='filebar'+(warn?' warn':'');
+  const msg=document.createElement('span'); msg.className='msg'; msg.textContent=text; bar.appendChild(msg);
+  buttons.forEach(b=>{ const btn=document.createElement('button'); btn.textContent=b.t; if(b.cls) btn.className=b.cls; btn.addEventListener('click',b.fn); bar.appendChild(btn); });
 }
 
 function cellKey(c,r,v){ return c+'::'+r+'::'+v; }
@@ -542,7 +534,21 @@ function resolve(key, seen){
   return raw;
 }
 
+function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function markHtml(t,q){ const x=String(t), i=q?x.toLowerCase().indexOf(q):-1; if(i<0) return esc(x); return esc(x.slice(0,i))+'<mark>'+esc(x.slice(i,i+q.length))+'</mark>'+esc(x.slice(i+q.length)); }
+function rowMatches(cl,row,q,inFormulas){
+  if((row.label+' '+row.id+' '+(row.unit||'')).toLowerCase().includes(q)) return true;
+  return state.variants.some(v=>{
+    const key=cellKey(cl.id,row.id,v.id);
+    const shown=resolve(key); if(String(shown===undefined||shown===null?'':shown).toLowerCase().includes(q)) return true;
+    const raw=state.values[key]; return !!inFormulas && typeof raw==='string' && raw.toLowerCase().includes(q);
+  });
+}
 function render(){
+  const searchEl=document.getElementById('search');
+  const q=(searchEl?searchEl.value:'').trim().toLowerCase();
+  const inFormulas=!!(document.getElementById('searchFormulas')&&document.getElementById('searchFormulas').checked);
+  let hitRows=0;
   const table = document.getElementById('table');
   table.innerHTML = '';
   const thead = document.createElement('thead');
@@ -572,11 +578,18 @@ function render(){
 
   const tbody = document.createElement('tbody');
   state.clusters.forEach((cl, ci)=>{
+    let rowsShown = cl.rows;
+    if(q){
+      const clusterHit = cl.name.toLowerCase().includes(q);
+      rowsShown = clusterHit ? cl.rows : cl.rows.filter(r=>rowMatches(cl,r,q,inFormulas));
+      if(!rowsShown.length) return;
+      hitRows += rowsShown.length;
+    }
     const trc = document.createElement('tr');
     trc.className='clusterrow';
     const tdc = document.createElement('td');
     tdc.colSpan = state.variants.length+1;
-    const collapsed = !!state.collapsed[cl.id];
+    const collapsed = q ? false : !!state.collapsed[cl.id];
     tdc.textContent = (collapsed?'▸ ':'▾ ') + cl.name + '  ';
     const addRowBtn = document.createElement('button');
     addRowBtn.textContent='+ Zeile'; addRowBtn.style.fontWeight='400';
@@ -591,21 +604,21 @@ function render(){
       if(confirm('Cluster "'+cl.name+'" komplett löschen?')){ state.clusters.splice(ci,1); save(); render(); }
     });
     tdc.appendChild(addRowBtn); tdc.appendChild(rmClBtn);
-    tdc.addEventListener('click', ()=>{ state.collapsed[cl.id] = !collapsed; save(); render(); });
+    tdc.addEventListener('click', ()=>{ if(q) return; state.collapsed[cl.id] = !collapsed; save(); render(); });
     trc.appendChild(tdc);
     tbody.appendChild(trc);
     if(collapsed) return;
 
-    cl.rows.forEach((row, ri)=>{
+    rowsShown.forEach((row)=>{
       const tr = document.createElement('tr');
       const tdl = document.createElement('td');
       tdl.className='rowlabel';
-      const b = document.createElement('b'); b.contentEditable='true'; b.textContent=row.label;
+      const b = document.createElement('b'); b.contentEditable='true'; b.innerHTML=q?markHtml(row.label,q):esc(row.label);
       b.addEventListener('blur', ()=>{ row.label=b.textContent.trim()||row.label; save(); });
       tdl.appendChild(b);
       if(row.unit){ const u=document.createElement('span'); u.className='unit'; u.textContent=' ('+row.unit+')'; tdl.appendChild(u); }
       const rmR = document.createElement('button'); rmR.textContent='×'; rmR.style.marginLeft='6px'; rmR.title='Zeile entfernen';
-      rmR.addEventListener('click',()=>{ cl.rows.splice(ri,1); save(); render(); });
+      rmR.addEventListener('click',()=>{ cl.rows.splice(cl.rows.indexOf(row),1); save(); render(); });
       tdl.appendChild(rmR);
       tr.appendChild(tdl);
 
@@ -643,6 +656,7 @@ function render(){
         inner.className='inner';
         inner.textContent = resolve(key) || '';
         inner.title = key;
+        if(q && String(inner.textContent).toLowerCase().includes(q)) td.classList.add('hit');
         inner.addEventListener('click', ()=>{
           const input = document.createElement('input');
           input.value = raw !== undefined ? raw : '';
@@ -662,6 +676,7 @@ function render(){
     });
   });
   table.appendChild(tbody);
+  const sc=document.getElementById('searchCount'); if(sc) sc.textContent=q?(hitRows+' Zeilen'):'';
 }
 
 document.getElementById('btnAddCluster').addEventListener('click', ()=>{
@@ -704,6 +719,22 @@ if(legacyV3){
   const bl=document.getElementById('btnLegacy'); bl.style.display='';
   bl.addEventListener('click',()=>{ jsonArea.value=legacyV3; jsonPanel.classList.add('open'); document.getElementById('jsonErr').textContent='Alte Version (v3) – nur zum Kopieren/Nachschlagen; Importieren würde die neue Struktur überschreiben.'; });
 }
+document.getElementById('search').addEventListener('input',()=>render());
+document.getElementById('searchFormulas').addEventListener('change',()=>render());
+document.addEventListener('keydown',e=>{
+  const t=e.target, typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable);
+  if(e.key==='/' && !typing){ e.preventDefault(); document.getElementById('search').focus(); }
+  if(e.key==='Escape' && t && t.id==='search'){ t.value=''; render(); t.blur(); }
+});
+document.getElementById('fileIn').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  const parsed=parseDataText(await f.text());
+  if(!parsed||!parsed.clusters||!parsed.variants){ setFileMsg('Datei nicht lesbar (erwartet: bauplan-data.js oder JSON-Export)'); return; }
+  if(!confirm('Aktuellen Stand durch den Inhalt von "'+f.name+'" ersetzen?')) return;
+  state=migrate(parsed); save(); render();
+});
+updateFileBar();
+restoreHandle();
 render();
 </script>
 </body>
