@@ -37,6 +37,7 @@ thead th{position:sticky;top:0;background:var(--panel);padding:9px 10px;text-ali
 thead th.rowlabelcol{position:sticky;left:0;z-index:3;background:var(--panel)}
 .clusterrow td{background:var(--accent-soft);font-weight:700;padding:7px 10px;position:sticky;left:0}
 .clusterrow{cursor:pointer}
+.clusterrow .phase{font-weight:400;color:var(--sub);font-size:11.5px;margin-left:10px;letter-spacing:.02em}
 .rowlabel{position:sticky;left:0;background:var(--panel);padding:8px 10px;color:var(--sub);z-index:1;min-width:190px}
 .rowlabel b{color:var(--ink);font-weight:600}
 .cell{padding:0;min-width:140px}
@@ -102,6 +103,11 @@ footer{padding:20px;text-align:center;color:var(--sub);font-size:11.5px}
     <b>Heizlast reagiert je Spalte:</b> Trag in der Fenster-Zeile (Anzahl/Breite/Höhe) unterschiedliche Werte in verschiedenen Spalten ein, um z. B. bodentiefe Fenster gegen kleinere Fenster zu vergleichen – die Heizlast-Spalte rechts daneben aktualisiert sich automatisch nur für diese eine Spalte. Gebäudegeometrie (Wandlänge, Grundfläche etc.) ist bewusst spaltenübergreifend gleich, da sich die Hülle nicht durch die Konstruktionswahl ändert.<br>
     <b>Kaskaden:</b> Fensterfläche → Wandfläche netto → Wandkosten · Fenster/Wand/Dach/Boden/Wintergarten → Heizlast → erforderliche Heizfläche (verglichen mit verfügbarer Fläche aus Zwischendecke + Wand) → Kreise/Rohrlänge/Kosten · Heizlast → Leistungsreserve der WP · U-Werte → Prüfzeilen (OK / zu hoch) bei den Normanforderungen. Annahmen: 70 W/m² Heizleistung, 15 m² je Heizkreis – bitte anpassen.<br>
     <b>Heizlast → Wärmepumpe → Graben:</b> Heizlast + Warmwasser (0,2 kW/Person) = erforderliche WP-Leistung → Entzugsleistung = WP × (1 − 1/COP) → Kreisanzahl (Entzug je Kreis, konservativ 3 kW) → Rohrlänge → Grabenkosten. Trägst du eine gewählte WP-Leistung aus dem Datenblatt ein, rechnet der Graben damit statt mit dem Soll-Wert. Bivalenzpunkt = Außentemperatur, bei der die Heizlast die WP-Heizleistung übersteigt (vereinfacht, ohne solare/innere Gewinne; liegt er unter der Norm-Außentemperatur, braucht es keinen Heizstab).<br>
+    <b>Baureihenfolge:</b> Die Cluster sind jetzt nach Ausführungsreihenfolge sortiert – die Phase steht grau rechts neben dem Clusternamen. Zwingend hintereinander: (1) Heizlast → WP-Leistung → Grabenlänge muss feststehen, <i>bevor</i> Solegraben und Perimeter-Baugrube ausgehoben werden (eine Baugrube für beides nutzen); (2) Zisterne vor der Geländemodellierung setzen und überlauffertig anbinden; (3) Horizontalsperre vor neuem Kellerboden und neuem Putz; (4) Perimeterdämmung + Drainage vor der Verfüllung; (5) Dämmlagen → FBH-Rohre → Estrich (die Estrich-Zeile im Kellerboden ist der Estrich auf der Flächenheizung, nicht doppelt ansetzen); (6) Dach zuerst, bevor innen nass gearbeitet wird; (7) Fenster und Außentüren vor der Vorhangfassade, damit die Laibung anschließen kann; (8) PV-Anmeldung beim Netzbetreiber dauert Wochen – früh stellen.<br>
+    <b>Dach (Schicht für Schicht, U = 0,13):</b> die Pauschale „Preis Dachaufbau" gibt es nicht mehr – gerechnet wird jetzt jede Ubakus-Schicht einzeln in €/m²: Lehm-Oberputz 10 · Fermacell 10 · OSB/3 18 innen · Thermoflex 220 im Gefach (18 €/m² je 100 mm) · Fichte-Sparren 80/220 im Raster 0,625 m (Querschnitt × 550 €/m³) · Thermoflat 100 <i>auf</i> den Sparren (22 €/m² je 100 mm) · Hinterlüftung 40 mit Lattung · OSB/3 18 außen · EPDM 1,5, dazu Kleinteile und Dachentwässerung. Kontrolle: U aus R = 7,451 rechnet mit. Der Lohn steht jetzt als €/m²-Zeile im Cluster (Born8 120 €/m², „alles alleine" 0 € – dort sind auch alle anderen Aufwand-Zeilen bewusst 0), Gerüst liegt separat im Cluster „Baustelle", PV-Unterkonstruktion im Cluster „PV" und wird **auf die EPDM-Bahn geklebt** (keine Durchdringung, dadurch bleiben Dachhaut und Luftdichtheit unversehrt).<br>
+    <b>Kellerboden (Variante 4):</b> beide Spalten sind auf XPS 035 Perimeter 120 mm + 100 mm Schaumglasschotter umgestellt (U = 0,21 W/m²K, Ueff mit Flächenheizung 0,42, tauwasserfrei, 141 kg/m², Aufbau 28,5 cm). Die Zwischensumme addiert alle Lagen einzeln (Selitac, Estrich, 2× PE-Folie, XPS, Schaumglasschotter je m³, Rückbau/Aushub je m²); der alte Pauschal-Aufwand ist auf 0 gesetzt, weil die €/m²-Preise Einheitspreise inkl. Einbau sind.<br>
+    <b>Regenwasserzisterne:</b> neuer Kosten-Cluster – 413 L/m²·a ergiebiger Niederschlag (Abflussbeiwert bereits enthalten) × Dachfläche = Ertrag, gegenüber dem regenwassernutzbaren Bedarf (Personen aus „Haustechnik"); Deckungsgrad, Reichweite, Trinkwasser-Ersparnis und Amortisation rechnen automatisch.<br>
+    <b>Fremdvergeben (Born8) vs. Eigenleistung („alles alleine"):</b> Born8 bildet jetzt durchgängig fremdvergeben ab – jedes Gewerke enthält Material <i>und</i> Lohn: Dach 120 €/m², Fassade 150 €/m², Kellerboden 25 €/m², Fenster 250 €/Stk, Außentüren 600 €/Stk, Flächenheizung 14 €/m², Wärmepumpe 2.400 € Montage, Elektro 3.000 €, PV 4.900 € (≈ 280 €/kWp). „alles alleine" = Material + gesetzlich notwendige Fremdgewerke (Inbetriebnahme/Abnahme Wärmepumpe 900 €, Zählerplatz/Abnahme Elektro 1.200 €, PV-Netzanschluss und Anmeldung 900 €), alle anderen Lohnzeilen 0. Der neue Cluster <b>„Eigenleistung"</b> rechnet die Lohnpositionen von Born8 in Facharbeiter-Stunden um (Stundensatz, Zeitfaktor Eigenbau, Wochenzeit und Zeitraum einstellbar) und zeigt, was deine Zeit abdeckt und welcher Betrag fremdvergeben bleibt. Gerüst, Bagger und Aushub sind keine reinen Lohnkosten – der Zeile „Lohn-/Personalanteil" wegen bleibt der Rest als Fremdkosten auch beim Selbstbau stehen.<br>
     Alles wird automatisch lokal in diesem Browser gespeichert. Referenzwerte (GEG/EH40, ΔT etc.) bitte gegen deinen aktuellen Stand/EEE-Nachweis prüfen.
   </p>
   <div class="panel" id="jsonPanel">
@@ -282,12 +288,768 @@ function migrate7(st){
   return st;
 }
 
+// Schema 8: PV-Komponenten detailliert aufschlüsseln
+function migrate8(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const mk=(id,label,unit,type='value')=>({id,label,unit,type});
+  const ins=(cid,after,rows)=>{
+    const c=C(cid); if(!c) return;
+    rows=rows.filter(r=>!c.rows.some(x=>x.id===r.id)); if(!rows.length) return;
+    let i=c.rows.findIndex(x=>x.id===after);
+    if(i>=0) i=i+1; else { i=c.rows.findIndex(x=>x.id==='zwischensumme'); if(i<0) i=c.rows.length; }
+    c.rows.splice(i,0,...rows);
+  };
+
+  // PV-Komponenten ergänzen
+  ins('pv','montage',[
+    mk('kabel_solarflex_preis','Kabel Solarflex 6 mm² (ca. 100 m)','€'),
+    mk('stecker_mc4_preis','Stäubli MC4 Stecker/Buchsen','€'),
+    mk('smart_meter_preis','Fronius Smart Meter IP','€'),
+    mk('stromwandler_preis','Fronius CT Stromwandler 100A','€'),
+    mk('schienen_preis','Halterung: Schienen + Verbinder','€'),
+    mk('anker_preis','Halterung: Ankerplatten / Füße','€'),
+    mk('klemmen_preis','Halterung: Mittel-/Endklemmen + Kappen','€'),
+    mk('zubehoer_preis','Halterung: Schrauben / Kleinteile','€')
+  ]);
+  const pv=C('pv');
+  if(pv){
+    pv.costTerms=[
+      ['kosten'],
+      ['module_anzahl','modul_preis'],
+      ['wr_preis'],
+      ['speicher_preis'],
+      ['kabel_solarflex_preis'],
+      ['stecker_mc4_preis'],
+      ['smart_meter_preis'],
+      ['stromwandler_preis'],
+      ['schienen_preis'],
+      ['anker_preis'],
+      ['klemmen_preis'],
+      ['zubehoer_preis'],
+      ['montage']
+    ];
+  }
+
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>t.replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined) st.values[k]=at(String(val)); };
+
+    // PV – konkrete realistische Preise
+    set('pv','modul_hersteller','LONGi');
+    set('pv','modul_modell','Hi-MO X6 Full Black 485 Wp');
+    set('pv','modulleistung','485');
+    set('pv','modul_breite','1.134');
+    set('pv','modul_hoehe','2.094');
+    set('pv','so_module','36');
+    set('pv','nw_module','0');
+    set('pv','ausrichtung','Südost');
+    set('pv','wechselrichter','Fronius Verto Plus 15.0');
+    set('pv','wechselrichter_ac','15');
+    set('pv','speicher','BYD HVB 14.8');
+    set('pv','speicher_kapazitaet','14.8');
+    set('pv','speicher_leistung','10');
+    set('pv','modul_preis','112');
+    set('pv','wr_preis','2950');
+    set('pv','speicher_preis','4700');
+    set('pv','kabel_solarflex_preis','150');
+    set('pv','stecker_mc4_preis','20');
+    set('pv','smart_meter_preis','330');
+    set('pv','stromwandler_preis','100');
+    set('pv','schienen_preis','900');
+    set('pv','anker_preis','850');
+    set('pv','klemmen_preis','170');
+    set('pv','zubehoer_preis','150');
+    set('pv','montage','0');
+  });
+  st.schema=8;
+  return st;
+}
+
+// Schema 9: Kellerboden als Variante 4 (XPS 120 + Schaumglasschotter 100) im Detail + Cluster Regenwasserzisterne
+function migrate9(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const mk=(id,label,unit,type='value')=>({id,label,unit,type});
+
+  // ---- Kellerboden: Variante 4 mit allen Schichten, Kennwerten und Einzelkosten ----
+  const kb=C('kellerboden');
+  if(kb){
+    const relabel=(rid,label,unit)=>{ const r=kb.rows.find(x=>x.id===rid); if(r){ r.label=label; if(unit!==undefined) r.unit=unit; } };
+    relabel('aufbau','Aufbau-Typ (Variante)');
+    relabel('daemmstaerke','Dämmstärke gesamt (XPS + Schaumglas)','mm');
+    relabel('uwert','U-Wert ohne Flächenheizung','W/m²K');
+    relabel('schaumglas_menge','Schaumglasschotter – Einbauvolumen','m³');
+    relabel('schaumglas_preis','Schaumglasschotter inkl. Einbau/Verdichtung','€/m³');
+    relabel('aufwand','Zusätzlicher Einbau-Aufwand (fremdvergeben)','€');
+    const neu=[
+      mk('schichten','Schichten (innen → außen)',''),
+      mk('estrich_dicke','Zementestrich','mm'),
+      mk('xps_dicke','XPS-Perimeterdämmung (unter der Platte)','mm'),
+      mk('schaumglas_dicke','Schaumglasschotter (kapillarbrechend)','mm'),
+      mk('aufbauhoehe','Aufbauhöhe gesamt / Aushubtiefe','mm'),
+      mk('uwert_eff','U-Wert effektiv mit Flächenheizung','W/m²K'),
+      mk('tauwasser','Tauwasser (Glaser-Nachweis)',''),
+      mk('gewicht','Gewicht des Aufbaus','kg/m²'),
+      mk('kapillarbruch','Kapillarbrechende Schicht / aufsteigende Feuchte',''),
+      mk('drueckendes_wasser','Drückendes Wasser',''),
+      mk('abZ','abZ / Zulassungen',''),
+      mk('selitac_preis_m2','Selitac-Trittschall','€/m²'),
+      mk('estrich_preis_m2','Zementestrich 60 mm','€/m²'),
+      mk('folien_anzahl','PE-Folie – Lagen','Stk'),
+      mk('folie_preis_m2','PE-Folie je Lage','€/m²'),
+      mk('xps_preis_m2','XPS 035 Perimeter 120 mm','€/m²'),
+      mk('rueckbau_preis_m2','Rückbau Altboden, Aushub, Entsorgung','€/m²'),
+      mk('kosten_pro_m2','Kosten je m² Aufbau','€/m²','auto')
+    ];
+    neu.forEach(r=>{ if(!kb.rows.some(x=>x.id===r.id)) kb.rows.push(r); });
+    const order=['aufbau','schichten','flaeche','estrich_dicke','xps_dicke','schaumglas_dicke','daemmstaerke','aufbauhoehe','uwert','uwert_eff','tauwasser','gewicht','kapillarbruch','drueckendes_wasser','abZ','selitac_preis_m2','estrich_preis_m2','folien_anzahl','folie_preis_m2','xps_preis_m2','schaumglas_menge','schaumglas_preis','rueckbau_preis_m2','aufwand','kosten_pro_m2','zwischensumme','auswahl'];
+    const rank=id=>{ const i=order.indexOf(id); return i<0?order.length:i; };
+    kb.rows.sort((a,b)=>rank(a.id)-rank(b.id));
+    kb.costTerms=[['flaeche','selitac_preis_m2'],['flaeche','estrich_preis_m2'],['flaeche','folie_preis_m2','folien_anzahl'],['flaeche','xps_preis_m2'],['schaumglas_menge','schaumglas_preis'],['flaeche','rueckbau_preis_m2'],['aufwand']];
+  }
+  // ---- Neues Cluster: Regenwasserzisterne (413 L/m²·a ergiebiger Niederschlag) ----
+  if(st.clusters.length && !C('regenwasser')){
+    const rw={id:'regenwasser',name:'Regenwasserzisterne',
+      costTerms:[['zisterne_preis'],['filter_preis'],['pumpe_preis'],['nachspeise_preis'],['leitungen_preis'],['versickerung_preis','versickerung_erforderlich'],['aushub_kosten'],['einbau_fremd']],
+      rows:[
+        mk('system','Anlagentyp',''),
+        mk('dachflaeche','Angeschlossene Dachfläche','m²','auto'),
+        mk('niederschlag','Ergiebiger Niederschlag (Abflussbeiwert enthalten)','L/m²·a'),
+        mk('ertrag','Regenwasserertrag','m³/a','auto'),
+        mk('verbrauch_pro_kopf','Regenwassernutzbarer Verbrauch (WC, Waschen, Garten)','L/(Person·d)'),
+        mk('verbrauch_jahr','Bedarf (regenwassernutzbar)','m³/a','auto'),
+        mk('deckung','Deckungsgrad durch Regenwasser','%','auto'),
+        mk('zisterne_volumen','Zisternennutzvolumen','m³'),
+        mk('reichweite','Reichweite mit vollem Speicher','d','auto'),
+        mk('hinweis','Hinweise zur Ausführung',''),
+        mk('zisterne_preis','Zisterne inkl. Schacht/Deckel','€'),
+        mk('filter_preis','Dachflächen-/Komfortfilter','€'),
+        mk('pumpe_preis','Entnahmetechnik / Pumpe','€'),
+        mk('nachspeise_preis','Trinkwasser-Nachspeisung (DIN 1988-100)','€'),
+        mk('leitungen_preis','Zu-/Abläufe, Spülschächte, Überlauf','€'),
+        mk('versickerung_erforderlich','Versickerung/Rückstau vorgeschrieben?','','select'),
+        mk('versickerung_preis','Versickerungsmulde / -rigole','€'),
+        mk('aushub_kosten','Aushub, Bagger, Verfüllung, Kran','€'),
+        mk('einbau_fremd','Fachbetrieb: Sanitär/Elektro, Inbetriebnahme','€'),
+        mk('wasserpreis','Wasser- + Abwasserpreis','€/m³'),
+        mk('trinkwasser_erspart','Eingespartes Trinkwasser','m³/a','auto'),
+        mk('einsparung_jahr','Einsparung','€/a','auto'),
+        mk('amortisation','Amortisation (Invest ÷ Einsparung)','a','auto'),
+        mk('zwischensumme','Zwischensumme','€','auto'),
+        mk('auswahl','In Gesamtsumme?','','select')
+      ]};
+    const gi=st.clusters.findIndex(c=>c.id==='betrieb');
+    st.clusters.splice(gi<0?st.clusters.length:gi,0,rw);
+  }
+  // ---- Werte je Variante (überschreibt nur unveränderte Defaults) ----
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>String(t).replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined) st.values[k]=at(val); };
+    const setIfDefault=(c,r,oldVal,newVal)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined || String(st.values[k])===oldVal) st.values[k]=at(newVal); };
+    const diy=/alleine|eigenleistung|selbstbau|selbstgebaut|diy/i.test(v.name||'');
+
+    // Kellerboden Variante 4 – Aufbau, Kennwerte, Einzelkosten
+    setIfDefault('kellerboden','aufbau','GLAPOR Schaumglasschotter SG 800 T','Var. 4 – XPS 120 mm + Schaumglasschotter 100 mm');
+    set('kellerboden','schichten','Selitac 5 mm; Zementestrich 60 mm; PE-Folie; XPS 035 Perimeter 120 mm; PE-Folie; GLAPOR Schaumglasschotter SG 800 T 100 mm');
+    set('kellerboden','estrich_dicke','60');
+    set('kellerboden','xps_dicke','120');
+    set('kellerboden','schaumglas_dicke','100');
+    setIfDefault('kellerboden','daemmstaerke','300','=@kellerboden.xps_dicke+@kellerboden.schaumglas_dicke');
+    set('kellerboden','aufbauhoehe','285');
+    setIfDefault('kellerboden','uwert','0.22','0.21');
+    set('kellerboden','uwert_eff','0.42');
+    set('kellerboden','tauwasser','keins (0 g/m²)');
+    set('kellerboden','gewicht','141');
+    set('kellerboden','kapillarbruch','sehr gut – Schaumglasschotter kapillarbrechend');
+    set('kellerboden','drueckendes_wasser','nicht vorgesehen – Grundwasserstand/Drainage prüfen');
+    set('kellerboden','abZ','XPS-Perimeter-Dämmung + GLAPOR Schaumglasschotter: abZ vorhanden');
+    set('kellerboden','selitac_preis_m2','4');
+    set('kellerboden','estrich_preis_m2','21');
+    set('kellerboden','folien_anzahl','2');
+    set('kellerboden','folie_preis_m2','2.5');
+    set('kellerboden','xps_preis_m2','25');
+    set('kellerboden','rueckbau_preis_m2','18.5');
+    const smKey='kellerboden::schaumglas_menge::'+id;
+    if(st.values[smKey]===undefined || String(st.values[smKey]).indexOf('daemmstaerke')>=0) st.values[smKey]=at('=@kellerboden.flaeche*@kellerboden.schaumglas_dicke/1000');
+    setIfDefault('kellerboden','schaumglas_preis','150','160');
+    setIfDefault('kellerboden','aufwand','4000','0');
+    set('kellerboden','kosten_pro_m2','=@kellerboden.zwischensumme/@kellerboden.flaeche');
+    // Regenwasserzisterne – Ertrag, Bedarf, Auslegung, Kosten
+    set('regenwasser','system','Nutzwasserzisterne mit Dachflächenfilter, Trinkwasser-Nachspeisung und Versickerung');
+    set('regenwasser','dachflaeche','=@geometrie.dachflaeche');
+    set('regenwasser','niederschlag','413');
+    set('regenwasser','ertrag','=@regenwasser.dachflaeche*@regenwasser.niederschlag/1000');
+    set('regenwasser','verbrauch_pro_kopf','45');
+    set('regenwasser','verbrauch_jahr','=@haustechnik.personen*@regenwasser.verbrauch_pro_kopf*365/1000');
+    set('regenwasser','deckung','=@regenwasser.verbrauch_jahr==0?0:Math.min(1,@regenwasser.ertrag/@regenwasser.verbrauch_jahr)*100');
+    set('regenwasser','zisterne_volumen','6');
+    set('regenwasser','reichweite','=@regenwasser.verbrauch_jahr==0?0:@regenwasser.zisterne_volumen*365/@regenwasser.verbrauch_jahr');
+    set('regenwasser','hinweis','Bei Überfahrung druckfeste Ausführung + Kran; Grubentiefe gegen Fundamentunterkante und Kellerabdichtung prüfen');
+    set('regenwasser','zisterne_preis','2400');
+    set('regenwasser','filter_preis','550');
+    set('regenwasser','pumpe_preis','750');
+    set('regenwasser','nachspeise_preis','620');
+    set('regenwasser','leitungen_preis','900');
+    set('regenwasser','versickerung_erforderlich','1');
+    set('regenwasser','versickerung_preis','1200');
+    if(!diy){
+      set('regenwasser','aushub_kosten','1500');
+      set('regenwasser','einbau_fremd','900');
+    }
+    set('regenwasser','wasserpreis','4');
+    set('regenwasser','trinkwasser_erspart','=Math.min(@regenwasser.ertrag,@regenwasser.verbrauch_jahr)');
+    set('regenwasser','einsparung_jahr','=@regenwasser.trinkwasser_erspart*@regenwasser.wasserpreis');
+    set('regenwasser','amortisation','=@regenwasser.einsparung_jahr==0?0:@regenwasser.zwischensumme/@regenwasser.einsparung_jahr');
+    set('regenwasser','auswahl','1');
+  });
+  st.schema=9;
+  return st;
+}
+
+// Schema 10: Cluster in Baureihenfolge (Phasen) bringen
+function migrate10(st){
+  const PHASEN=[
+    ['geometrie','0 · Grundlagen'],
+    ['anforderungen','0 · Grundlagen'],
+    ['normanforderungen','0 · Grundlagen'],
+    ['planung','1 · Planung, Genehmigung, Nachweise'],
+    ['baustelle','2 · Baustelle einrichten, Rückbau, Gerüst/Kran'],
+    ['regenwasser','3 · Erdarbeiten: Zisterne setzen und anbinden'],
+    ['graben','3 · Erdarbeiten: Solegraben (Restlänge vor Aushub festlegen!)'],
+    ['horizontalsperre','4 · Keller: Horizontalsperre vor dem neuen Boden'],
+    ['perimeterdaemmung','4 · Keller: Perimeterdämmung an erdberührter Wand'],
+    ['rohbau_keller','4 · Keller: Platte/WU, falls nötig'],
+    ['kellerboden','5 · Kellerboden-Aufbau (dämmen, FBH, Estrich)'],
+    ['dach','6 · Dach zuerst – Haus wetterfest machen'],
+    ['fenster','7 · Hülle: Fenster vor Fassadenuntersicht setzen'],
+    ['tueren','7 · Hülle: Außentüren mit der Fassade abstimmen'],
+    ['wand','8 · Fassade / Vorhangfassade um Fenster + Türen'],
+    ['wintergarten','8 · Anbau Wintergarten (Fundament früher!)'],
+    ['heizlast','9 · Heizlast berechnen – vor WP-Bestellung und Grabenaushub'],
+    ['zwischendecke','10 · Innenausbau: Zwischendecke/Untersicht'],
+    ['flaechenheizung','10 · Innenausbau: Heizkreise in Boden + Decke'],
+    ['haustechnik','11 · Haustechnik: Wärmepumpe, WW, Verteiler, Probebetrieb'],
+    ['bivalenz','11 · Haustechnik: Heizstab / Bivalenzausrüstung'],
+    ['elektrik','12 · Elektro: Rohbau, Verteiler, Hausanschluss'],
+    ['pv','12 · PV auf dem neuen Dach, Anmeldung Netz'],
+    ['ausbau','13 · Innenausbau: Putz, Trockenbau, Bäder, Treppe'],
+    ['betrieb','14 · Betrieb / Verbrauch'],
+    ['gesamt','Summe']
+  ];
+  const pos={}; PHASEN.forEach((p,i)=>{ pos[p[0]]=i; });
+  st.clusters.forEach(cl=>{ const p=PHASEN[pos[cl.id]]; if(p) cl.phase=p[1]; else delete cl.phase; });
+  const rank=cl=>{ const i=pos[cl.id]; return i===undefined? PHASEN.length : i; };
+  st.clusters.sort((a,b)=>rank(a)-rank(b));
+  const gi=st.clusters.findIndex(c=>c.id==='gesamt');
+  if(gi>=0 && gi!==st.clusters.length-1) st.clusters.push(st.clusters.splice(gi,1)[0]);
+  st.schema=10;
+  return st;
+}
+
+// Schema 11: Dach auf 220 mm Sparren + Gefachdämmung nach Ubakus (U = 0,13), Preise itemisiert
+function migrate11(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const mk=(id,label,unit,type='value')=>({id,label,unit,type});
+  const d=C('dach');
+  if(d){
+    const relabel=(rid,label,unit)=>{ const r=d.rows.find(x=>x.id===rid); if(r){ r.label=label; if(unit!==undefined) r.unit=unit; } };
+    relabel('uwert','U-Wert (Ubakus: 220 mm Sparren + 220 mm Gefach + 100 mm Untersparren)','W/m²K');
+    relabel('spalt','Spalt / Hinterlüftung','mm');
+    relabel('preis_pro_m2','Rest-Aufbau je m² (100 mm Untersparren-Dämmung, Unterdach, Deckung, Lattung, Folien, Klempnerei)','€/m²');
+    relabel('kosten','Sonstige Dachkosten','€');
+    const neu=[
+      mk('sparren_typ','Tragwerk – gewählte Variante',''),
+      mk('sparren_breite','Sparrenbreite','mm'),
+      mk('sparren_hoehe','Sparrenhöhe (Balken)','mm'),
+      mk('sparren_abstand','Sparrenabstand (Achsraster)','m'),
+      mk('spannweite','Spannweite','m'),
+      mk('holz_preis_m3','Holzpreis C24','€/m³'),
+      mk('holz_menge','Holzmenge Sparren','m³','auto'),
+      mk('sparren_preis_lfm','Sparren je lfm','€/lfm','auto'),
+      mk('sparren_preis_m2','Sparren je m²','€/m²','auto'),
+      mk('durchbiegung','Durchbiegung (Stützweite, 5/300-Lastfall)','mm'),
+      mk('durchbiegung_check','Prüfung Durchbiegung','','auto'),
+      mk('gefachdaemmung_typ','Gefachdämmung',''),
+      mk('gefachdaemmung_dicke','Gefachdämmung (= Sparrenhöhe)','mm','auto'),
+      mk('untersparren_dicke','Untersparren-Dämmung (Thermoflat)','mm'),
+      mk('aufbau_dicke','Konstruktionsdicke gesamt','mm','auto'),
+      mk('daemmstoff_menge','Dämmstoffmenge (Gefach + Untersparren)','m³','auto'),
+      mk('daemmung_preis_pro_100mm','Dämmstoff je 100 mm','€/m²'),
+      mk('gefachdaemmung_preis_m2','Gefachdämmung je m²','€/m²','auto'),
+      mk('aufbau_preis_m2','Davon itemisiert: Sparren + Gefachdämmung','€/m²','auto'),
+      mk('hinweis_tragwerk','Hinweis Tragwerksalternative','')
+    ];
+    neu.forEach(r=>{ if(!d.rows.some(x=>x.id===r.id)) d.rows.push(r); });
+    const order=['neigung','west_grundflaeche','ost_grundflaeche','mittel_grundflaeche','west_flaeche','ost_flaeche','flaeche_pv','flaeche','uwert','sparren_typ','sparren_breite','sparren_hoehe','sparren_abstand','spannweite','holz_preis_m3','holz_menge','sparren_preis_lfm','sparren_preis_m2','durchbiegung','durchbiegung_check','gefachdaemmung_typ','gefachdaemmung_dicke','untersparren_dicke','spalt','aufbau_dicke','daemmstoff_menge','daemmung_preis_pro_100mm','gefachdaemmung_preis_m2','aufbau_preis_m2','hinweis_tragwerk','preis_pro_m2','kosten','aufwand','zwischensumme','auswahl'];
+    const rank=id=>{ const i=order.indexOf(id); return i<0?order.length:i; };
+    d.rows.sort((a,b)=>rank(a.id)-rank(b.id));
+    d.costTerms=[['kosten'],['flaeche','preis_pro_m2'],['flaeche','sparren_preis_m2'],['flaeche','gefachdaemmung_preis_m2'],['aufwand']];
+  }
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>String(t).replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined) st.values[k]=at(val); };
+    const setIfDefault=(c,r,oldVal,newVal)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined || String(st.values[k])===oldVal) st.values[k]=at(newVal); };
+
+    setIfDefault('dach','uwert','0.15','0.13');
+    setIfDefault('dach','preis_pro_m2','220','180');
+    set('dach','sparren_typ','Vollholz C24, 80 × 220 mm (gegenüber 160 mm: U 0,16 → 0,13)');
+    set('dach','sparren_breite','80');
+    set('dach','sparren_hoehe','220');
+    set('dach','sparren_abstand','0.625');
+    set('dach','spannweite','5');
+    set('dach','holz_preis_m3','550');
+    set('dach','holz_menge','=@dach.flaeche*@dach.sparren_breite/1000*@dach.sparren_hoehe/1000/@dach.sparren_abstand');
+    set('dach','sparren_preis_lfm','=(@dach.sparren_breite/1000)*(@dach.sparren_hoehe/1000)*@dach.holz_preis_m3');
+    set('dach','sparren_preis_m2','=@dach.sparren_preis_lfm/@dach.sparren_abstand');
+    set('dach','durchbiegung','8.3');
+    set('dach','durchbiegung_check','=@dach.durchbiegung<=@dach.spannweite*1000/300?"OK – Reserve (L/300 = "+String(Math.round(@dach.spannweite*1000/30)/10).replace(".",",")+" mm)":"Grenze L/300 = "+String(Math.round(@dach.spannweite*1000/30)/10).replace(".",",")+" mm überschritten"');
+    set('dach','gefachdaemmung_typ','Gutex Thermoflex (Holzfaser, WLS 040), klemmend im Gefach');
+    set('dach','gefachdaemmung_dicke','=@dach.sparren_hoehe');
+    set('dach','untersparren_dicke','100');
+    set('dach','aufbau_dicke','=@dach.sparren_hoehe+@dach.untersparren_dicke+@dach.spalt');
+    set('dach','daemmstoff_menge','=@dach.flaeche*(@dach.gefachdaemmung_dicke+@dach.untersparren_dicke)/1000');
+    set('dach','daemmung_preis_pro_100mm','18');
+    set('dach','gefachdaemmung_preis_m2','=@dach.gefachdaemmung_dicke/100*@dach.daemmung_preis_pro_100mm');
+    set('dach','aufbau_preis_m2','=@dach.sparren_preis_m2+@dach.gefachdaemmung_preis_m2');
+    set('dach','hinweis_tragwerk','Alternative STEICOjoist SJ60/300: ≈ 10 mm Durchbiegung, ≈ 75 €/m² statt ≈ 55 €/m² (+20 €/m²) – dafür formstabil und auf 360/400 mm skalierbar');
+  });
+  st.schema=11;
+  return st;
+}
+
+// Schema 12: Dach = Ubakus-Schichten (Lehmputz bis EPDM), Pauschal-"Rest-Aufbau" entfällt, Gerüst separat
+function migrate12(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const mk=(id,label,unit,type='value')=>({id,label,unit,type});
+  const d=C('dach');
+  if(d){
+    // "Rest-Aufbau"-Pauschale war ein alter Migrations-Default und wird entfernt
+    d.rows=d.rows.filter(r=>r.id!=='preis_pro_m2'&&r.id!=='aufbau_preis_m2');
+    st.variants.forEach(v=>{ delete st.values['dach::preis_pro_m2::'+v.id]; delete st.values['dach::aufbau_preis_m2::'+v.id]; });
+    // Untersparren-Dämmung war falsch benannt: Thermoflat liegt AUFPARBEN (Ubakus Schicht 6)
+    const rename=(oldId,newId)=>{
+      const r=d.rows.find(x=>x.id===oldId); if(r) r.id=newId;
+      st.variants.forEach(v=>{
+        const o='dach::'+oldId+'::'+v.id, n='dach::'+newId+'::'+v.id;
+        if(st.values[o]!==undefined){ st.values[n]=st.values[o]; delete st.values[o]; }
+        Object.keys(st.values).forEach(k=>{ if(k.endsWith('::'+v.id)&&typeof st.values[k]==='string'&&st.values[k][0]==='='&&st.values[k].indexOf(oldId)>=0) st.values[k]=st.values[k].split(oldId).join(newId); });
+      });
+    };
+    rename('untersparren_dicke','aufsparren_dicke');
+    const relabel=(rid,label,unit)=>{ const r=d.rows.find(x=>x.id===rid); if(r){ r.label=label; if(unit!==undefined) r.unit=unit; } };
+    relabel('uwert','U-Wert (Ubakus, R = 7,451 m²K/W)','W/m²K');
+    relabel('spalt','Schicht 7: Hinterlüftung (Außenluft)','mm');
+    relabel('aufwand','Einbau-Aufwand (Zimmerer + Abdichtung, Lohn)','€');
+    const neu=[
+      mk('schichten','Schichten (innen → außen)',''),
+      mk('r_wert','Wärmedurchlasswiderstand R','m²K/W'),
+      mk('uwert_pruefung','Kontrolle: U-Wert gerechnet aus R','W/m²K','auto'),
+      mk('gewicht','Gewicht des Aufbaus','kg/m²'),
+      mk('lage_lehm_dicke','Schicht 1: Lehm-Oberputz','mm'),
+      mk('lage_lehm_preis_m2','Schicht 1: Lehm-Oberputz','€/m²'),
+      mk('lage_gipsfaser_dicke','Schicht 2: Fermacell Gipsfaser','mm'),
+      mk('lage_gipsfaser_preis_m2','Schicht 2: Gipsfaser-Platte','€/m²'),
+      mk('lage_osb_innen_dicke','Schicht 3: OSB/3 innen (Luftdicht)','mm'),
+      mk('lage_osb_innen_preis_m2','Schicht 3: OSB/3 innen','€/m²'),
+      mk('lage_osb_aussen_dicke','Schicht 8: OSB/3 außen (Unterlage)','mm'),
+      mk('lage_osb_aussen_preis_m2','Schicht 8: OSB/3 außen','€/m²'),
+      mk('lage_epdm_dicke','Schicht 9: EPDM-Abdichtung','mm'),
+      mk('lage_epdm_preis_m2','Schicht 9: EPDM-Bahn','€/m²'),
+      mk('hinterlueftung_lattung_preis_m2','Schicht 7: Lattung/Abstand Hinterlüftung','€/m²'),
+      mk('aufsparren_preis_pro_100mm','Thermoflat je 100 mm','€/m²'),
+      mk('aufsparren_preis_m2','Schicht 6: Aufsparren-Dämmung je m²','€/m²','auto'),
+      mk('kleinteile_preis_m2','Schrauben, Dichtband, Profile, Kleinteile','€/m²'),
+      mk('material_preis_m2','Material je m² gesamt (Dachaufbau)','€/m²','auto'),
+      mk('entwaesserung_kosten','Dachentwässerung (Rinnen, Fallrohre, Ausläufe)','€')
+    ];
+    neu.forEach(r=>{ if(!d.rows.some(x=>x.id===r.id)) d.rows.push(r); });
+    const order=['neigung','west_grundflaeche','ost_grundflaeche','mittel_grundflaeche','west_flaeche','ost_flaeche','flaeche_pv','flaeche','uwert','r_wert','uwert_pruefung','schichten','gewicht','aufbau_dicke','sparren_typ','sparren_breite','sparren_hoehe','sparren_abstand','spannweite','holz_preis_m3','holz_menge','sparren_preis_lfm','sparren_preis_m2','durchbiegung','durchbiegung_check','gefachdaemmung_typ','gefachdaemmung_dicke','daemmung_preis_pro_100mm','gefachdaemmung_preis_m2','aufsparren_dicke','aufsparren_preis_pro_100mm','aufsparren_preis_m2','spalt','lage_lehm_dicke','lage_lehm_preis_m2','lage_gipsfaser_dicke','lage_gipsfaser_preis_m2','lage_osb_innen_dicke','lage_osb_innen_preis_m2','lage_osb_aussen_dicke','lage_osb_aussen_preis_m2','lage_epdm_dicke','lage_epdm_preis_m2','hinterlueftung_lattung_preis_m2','kleinteile_preis_m2','material_preis_m2','daemmstoff_menge','entwaesserung_kosten','hinweis_tragwerk','kosten','aufwand','zwischensumme','auswahl'];
+    const rank=id=>{ const i=order.indexOf(id); return i<0?order.length:i; };
+    d.rows.sort((a,b)=>rank(a.id)-rank(b.id));
+    d.costTerms=[['kosten'],['flaeche','sparren_preis_m2'],['flaeche','gefachdaemmung_preis_m2'],['flaeche','aufsparren_preis_m2'],['flaeche','lage_lehm_preis_m2'],['flaeche','lage_gipsfaser_preis_m2'],['flaeche','lage_osb_innen_preis_m2'],['flaeche','lage_osb_aussen_preis_m2'],['flaeche','lage_epdm_preis_m2'],['flaeche','hinterlueftung_lattung_preis_m2'],['flaeche','kleinteile_preis_m2'],['entwaesserung_kosten'],['aufwand']];
+  }
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>String(t).replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined) st.values[k]=at(val); };
+    const setIfDefault=(c,r,oldVal,newVal)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined || String(st.values[k])===oldVal) st.values[k]=at(newVal); };
+    const setIfContains=(c,r,needle,newVal)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined || String(st.values[k]).indexOf(needle)>=0) st.values[k]=at(newVal); };
+    const diy=/alleine|eigenleistung|selbstbau|selbstgebaut|diy/i.test(v.name||'');
+
+    set('dach','schichten','1 Lehm-Oberputz 10 · 2 Fermacell 10 · 3 OSB/3 18 · 4 Thermoflex 220 (Gefach) · 5 Fichte-Sparren 220 · 6 Thermoflat 100 (auf Sparren) · 7 Hinterlüftung 40 · 8 OSB/3 18 · 9 EPDM 1,5');
+    set('dach','r_wert','7.451');
+    set('dach','uwert_pruefung','=1/(@dach.r_wert+0.1+0.04)');
+    set('dach','gewicht','87.8');
+    setIfContains('dach','aufbau_dicke','sparren_hoehe','=@dach.lage_lehm_dicke+@dach.lage_gipsfaser_dicke+@dach.lage_osb_innen_dicke+@dach.sparren_hoehe+@dach.aufsparren_dicke+@dach.spalt+@dach.lage_osb_aussen_dicke+@dach.lage_epdm_dicke');
+    setIfContains('dach','sparren_typ','C24','Fichte Vollholz 80 × 220 mm (Ubakus Schicht 5, λ 0,13, 12 % Feuchte)');
+    setIfContains('dach','gefachdaemmung_typ','WLS 040','Gutex Thermoflex 038, klemmend im Gefach (Ubakus λ 0,038)');
+    set('dach','aufsparren_preis_pro_100mm','22');
+    set('dach','aufsparren_preis_m2','=@dach.aufsparren_dicke/100*@dach.aufsparren_preis_pro_100mm');
+    set('dach','lage_lehm_dicke','10');       set('dach','lage_lehm_preis_m2','8');
+    set('dach','lage_gipsfaser_dicke','10');  set('dach','lage_gipsfaser_preis_m2','12');
+    set('dach','lage_osb_innen_dicke','18');  set('dach','lage_osb_innen_preis_m2','11');
+    set('dach','lage_osb_aussen_dicke','18'); set('dach','lage_osb_aussen_preis_m2','11');
+    set('dach','lage_epdm_dicke','1.5');      set('dach','lage_epdm_preis_m2','15');
+    set('dach','hinterlueftung_lattung_preis_m2','6');
+    set('dach','kleinteile_preis_m2','5');
+    set('dach','material_preis_m2','=@dach.sparren_preis_m2+@dach.gefachdaemmung_preis_m2+@dach.aufsparren_preis_m2+@dach.lage_lehm_preis_m2+@dach.lage_gipsfaser_preis_m2+@dach.lage_osb_innen_preis_m2+@dach.lage_osb_aussen_preis_m2+@dach.lage_epdm_preis_m2+@dach.hinterlueftung_lattung_preis_m2+@dach.kleinteile_preis_m2');
+    set('dach','entwaesserung_kosten','1000');
+    setIfContains('dach','hinweis_tragwerk','STEICOjoist','Alternative STEICOjoist SJ60/300: ≈ 10 mm Durchbiegung, teurer, dafür formstabil und höher skalierbar | PV-Befestigung/Unterkonstruktion liegt im Cluster PV (Halterung 2.070 €), nicht im Dach | EPDM nach PV-Montage ausführen bzw. Durchdringungen mit ausführen');
+    // Gerüst: im Cluster Baustelle, bei "alles alleine" bewusst 0
+    const gk='baustelle::geruest::'+id;
+    if(st.values[gk]===undefined) st.values[gk]=diy?'0':'2400';
+    // Cluster "Baustelle" zählte bisher nicht mit (Schalter nie gesetzt) – damit das Gerüst in der Summe landet
+    const bk='baustelle::auswahl::'+id;
+    if(st.values[bk]===undefined) st.values[bk]='1';
+  });
+  st.schema=12;
+  return st;
+}
+
+// Schema 13: Realistischer Dachlohn nur in Variante 1, Variante 2 Lohn frei, PV-Träger verklebt (ohne Durchdringung)
+function migrate13(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const mk=(id,label,unit,type='value')=>({id,label,unit,type});
+  const d=C('dach'), pv=C('pv');
+  if(d){
+    const relabel=(rid,label,unit)=>{ const r=d.rows.find(x=>x.id===rid); if(r){ r.label=label; if(unit!==undefined) r.unit=unit; } };
+    relabel('aufwand','Einbau-Aufwand (= Fläche × Lohn je m²)','€');
+    if(!d.rows.some(r=>r.id==='lohn_pro_m2')){
+      const i=d.rows.findIndex(r=>r.id==='hinweis_tragwerk');
+      d.rows.splice(i<0?d.rows.length:i,0,mk('lohn_pro_m2','Lohn Dachausführung je m² (fremdvergeben)','€/m²'));
+    }
+  }
+  if(pv){
+    const prel=(rid,label)=>{ const r=pv.rows.find(x=>x.id===rid); if(r) r.label=label; };
+    prel('schienen_preis','Träger: Schienen + Verbinder');
+    prel('anker_preis','Träger: Klebefüße + EPDM-Attachen (verklebt, ohne Durchdringung)');
+    prel('klemmen_preis','Träger: Mittel-/Endklemmen + Kappen');
+    prel('zubehoer_preis','Träger: Kleber, Primer, Reiniger (Untergrundvorbereitung)');
+    if(!pv.rows.some(r=>r.id==='befestigung_hinweis')){
+      const zi=pv.rows.findIndex(r=>r.id==='zwischensumme');
+      pv.rows.splice(zi<0?pv.rows.length:zi,0,mk('befestigung_hinweis','Hinweis Befestigung',''));
+    }
+  }
+  const LOHNZELLEN=['horizontalsperre::aufwand','perimeterdaemmung::aufwand','graben::baggerkosten','regenwasser::aushub_kosten','regenwasser::einbau_fremd','wintergarten::aufwand','zwischendecke::aufwand_einbau','bivalenz::aufwand_einbau','baustelle::geruest','baustelle::kran_tage'];
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>String(t).replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined) st.values[k]=at(val); };
+    const setIfDefault=(c,r,oldVal,newVal)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined || String(st.values[k])===oldVal) st.values[k]=at(newVal); };
+    const setIfContains=(c,r,needle,newVal)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined || String(st.values[k]).indexOf(needle)>=0) st.values[k]=at(newVal); };
+    const diy=/alleine|eigenleistung|selbstbau|selbstgebaut|diy/i.test(v.name||'');
+
+    // Dachlohn: 120 €/m² sind für 9 Lagen inkl. 2× OSB, Luftdichtheit, Fermacell, Lehmputz und EPDM-Nähte realistisch
+    set('dach','lohn_pro_m2',diy?'0':'120');
+    const ak='dach::aufwand::'+id;
+    if(st.values[ak]===undefined || String(st.values[ak])==='5000') st.values[ak]=at('=@dach.flaeche*@dach.lohn_pro_m2');
+    // "alles alleine" = keinerlei Lohnpositionen
+    if(diy) LOHNZELLEN.forEach(path=>{ const k=path+'::'+id; if(st.values[k]!==undefined && parseFloat(st.values[k])) st.values[k]='0'; });
+
+    setIfDefault('pv','anker_preis','850','1200');
+    setIfDefault('pv','zubehoer_preis','150','250');
+    set('pv','befestigung_hinweis','Verklebtes Trägersystem auf EPDM – keine Durchdringung, Dachhaut und Luftdichtheit bleiben unversehrt. Systemfreigabe für 20° Neigung, EPDM-Dicke und Wind-/Schneelast nachweisen; Untergrund trocken und staubfrei, Verklebung bei ≥ +5 °C; alle Durchführungen (Kabel, Zuluft) vor dem Kleben ausführen');
+    setIfContains('dach','hinweis_tragwerk','STEICOjoist','Alternative STEICOjoist SJ60/300: ≈ 10 mm Durchbiegung, teurer, dafür formstabil und höher skalierbar | PV-Träger wird auf die EPDM-Bahn geklebt (keine Durchdringung, Details im Cluster PV) | Aufständerung/Längskanal so wählen, dass die 40 mm Hinterlüftung nicht abgeriegelt wird');
+  });
+  st.schema=13;
+  return st;
+}
+
+// Schema 14: Born8 = durchgängig fremdvergeben (Material + Lohn), "alles alleine" = Material + gesetzlich Pflicht-Fremdgewerke.
+// Neuer Auswertungs-Cluster "Eigenleistung": rechnet die Lohnpositionen von Born8 in Facharbeiter-Stunden um und vergleicht sie mit der eigenen Zeit.
+function migrate14(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const mk=(id,label,unit,type='value')=>({id,label,unit,type});
+  const INS=(cl,row,beforeId)=>{ if(!cl||cl.rows.some(r=>r.id===row.id)) return; let i=cl.rows.findIndex(r=>r.id===(beforeId||'zwischensumme')); if(i<0) i=cl.rows.length; cl.rows.splice(i,0,row); };
+  const relabel=(cl,rid,label,type)=>{ const r=cl&&cl.rows.find(x=>x.id===rid); if(r){ if(label) r.label=label; if(type) r.type=type; } };
+
+  // --- Lohnzeilen dort ergänzen, wo bisher nur Material gerechnet wurde ---
+  const kb=C('kellerboden');
+  INS(kb,mk('lohn_pro_m2','Lohn je m²: XPS/Folien verlegen, Estrich-Lohn, Selitac (fremdvergeben)','€/m²'),'aufwand');
+  relabel(kb,'aufwand','Einbau-Aufwand (= Fläche × Lohn je m²)');
+  const fn=C('fenster');
+  INS(fn,mk('einbau_pro_stk','Einbau je Fenster inkl. Abdichtung (fremdvergeben)','€/Stk'));
+  INS(fn,mk('einbau_gesamt','Einbau gesamt','€','auto'));
+  if(fn) fn.costTerms=[['kosten'],['einbau_gesamt']];
+  const tu=C('tueren');
+  INS(tu,mk('einbau_pro_stk','Einbau je Tür inkl. Zarge und Anschluss (fremdvergeben)','€/Stk'));
+  INS(tu,mk('einbau_gesamt','Einbau gesamt','€','auto'));
+  if(tu) tu.costTerms=[['kosten'],['einbau_gesamt']];
+  const fh=C('flaechenheizung');
+  INS(fh,mk('lohn_pro_m2','Lohn je m²: Verlegen, Verteiler, Druckprobe (fremdvergeben)','€/m²'));
+  INS(fh,mk('lohn_gesamt','Lohn gesamt','€','auto'));
+  if(fh) fh.costTerms=[['flaeche','kosten_pro_m2'],['verteiler_kosten'],['lohn_gesamt']];
+  const ht=C('haustechnik');
+  INS(ht,mk('geraet_preis','Wärmepumpe, Puffer, Warmwasserspeicher (Gerät/Material)','€'),'kosten');
+  INS(ht,mk('montage_preis','Montage und Inbetriebnahme (fremdvergeben; „alles alleine“ = Pflichtanteil Inbetriebnahme/Abnahme)','€'),'kosten');
+  relabel(ht,'kosten','Summe Haustechnik (Gerät + Montage)','auto');
+  if(ht) ht.costTerms=[['geraet_preis'],['montage_preis']];
+  const el=C('elektrik');
+  INS(el,mk('material_preis','Elektromaterial: Zählerschrank, Unterverteilung, Kabel, Cat7','€'),'kosten');
+  INS(el,mk('lohn_preis','Elektroleistung (fremdvergeben; „alles alleine“ = Pflichtanteil Zählerplatz/Abnahme)','€'),'kosten');
+  relabel(el,'kosten','Summe Elektrik (Material + Lohn)','auto');
+  if(el) el.costTerms=[['material_preis'],['lohn_preis']];
+  relabel(C('pv'),'montage','PV-Montage und Elektroanschluss (fremdvergeben; „alles alleine“ = Pflichtanteil Netzanschluss/Inbetriebnahme/Anmeldung)');
+  INS(C('planung'),mk('hinweis_extern','Hinweis: Architekt, Statik, EH40-Nachweis und Bauleitung sind immer extern – in beiden Spalten gleich ansetzen (derzeit in beiden leer)',''));
+  INS(C('baustelle'),mk('hinweis_fremd','Hinweis: Gerüst, Kran und Container sind keine Lohnkosten – sie fallen auch beim Selbstbau an. Kran für Dachbinder-/Sparrenpakete und Fassadenelemente einplanen (Krantag 900–1.400 €)',''));
+  INS(C('ausbau'),mk('hinweis_luecke','Hinweis: Innenausbau ist in beiden Spalten noch nicht budgetiert (0 €). Fremdvergeben realistisch 350–550 €/m² Nutzfläche, davon 45–55 % Lohn',''));
+  // --- Auswertungs-Cluster (ohne „In Gesamtsumme?“ – rechnet nur, kostet nichts) ---
+  const ELROWS=[
+      mk('hinweis','Born8 = alles fremdvergeben (Material + Lohn), „alles alleine“ = Material + gesetzlich notwendige Fremdgewerke. Die Stundenzeilen rechnen die Lohnpositionen aus Born8 mit dem Stundensatz unten in Facharbeiter-Stunden um – viel Stunden sind die lohnendsten Eigenleistungs-Gewerke.'),
+      mk('lohn_stundensatz','Lohnstundensatz Fachbetrieb (steckt in allen Lohnpositionen)','€/h'),
+      mk('geraete_lohn_anteil','Lohn-/Personalanteil in Gerüst-, Bagger- und Aushubpositionen',''),
+      mk('h_dach','h · Dach: Sparren, Dämmung, 2× OSB, EPDM, Fermacell/Lehm','h','auto'),
+      mk('h_fenster','h · Fenster: Montage und Abdichtung','h','auto'),
+      mk('h_tueren','h · Außentüren: Montage','h','auto'),
+      mk('h_fassade','h · Vorhangfassade: Untergestell, Dämmung, Bekleidung','h','auto'),
+      mk('h_kellerboden','h · Kellerboden: XPS, Folien, Estrich, Schaumglasschotter','h','auto'),
+      mk('h_perimeter','h · Perimeterdämmung und Schutzschicht','h','auto'),
+      mk('h_horizontalsperre','h · Horizontalsperre (Chromstahlblech)','h','auto'),
+      mk('h_zwischendecke','h · Zwischendecke: Untersicht und Dämmung','h','auto'),
+      mk('h_flb','h · Flächenheizung: Verlegen und Verteiler','h','auto'),
+      mk('h_haustechnik','h · Heizung/Sanitär: WP-Montage, Puffer, Anbindung','h','auto'),
+      mk('h_elektro','h · Elektro: Rohbau, Verteiler, Installation','h','auto'),
+      mk('h_pv','h · PV: Montage und Verkabelung','h','auto'),
+      mk('h_regenwasser','h · Regenwasser: Zisterneneinbau und Anbindung','h','auto'),
+      mk('h_geruest_erd','h · Gerüst, Bagger, Aushub (nur Lohnanteil)','h','auto'),
+      mk('stunden_fach','Facharbeiter-Stunden gesamt','h','auto'),
+      mk('arbeitswert_lohn','Arbeitswert aller Lohnpositionen','€','auto'),
+      mk('geraete_fremd','Gerät/Fremdkosten, die auch beim Selbstbau anfallen (Rest der Gerüst-/Bagger-/Aushubpositionen)','€','auto'),
+      mk('faktor_selbstbau','Zeitfaktor Eigenbau gegenüber Fachbetrieb',''),
+      mk('stunden_eigenbau','Eigene Stunden für alle Gewerke (= Fachstunden × Zeitfaktor)','h','auto'),
+      mk('std_pro_kw','Verfügbare Zeit je Woche','h/Woche'),
+      mk('wochen','Verfügbarer Zeitraum','Wochen'),
+      mk('kapazitaet','Eigene Kapazität im Zeitraum','h','auto'),
+      mk('deckung','Abdeckung der Eigenleistung',' %','auto'),
+      mk('wochen_benotigt','Dauer bei eigener Wochenzeit','Wochen','auto'),
+      mk('monate_benotigt','Dauer in Monaten','Monate','auto'),
+      mk('eigenleistung_wert','Wert der Eigenleistung, die in deine Zeit passt','€','auto'),
+      mk('rest_fremd','Rest, der fremdvergeben bleibt','€','auto'),
+      mk('delta_summen','Kontrolle: Differenz der beiden Gesamtsummen','€','auto'),
+      mk('kontrolle_summe','Kontrolle: Arbeitswert + Gerät/Fremdkosten (sollte zur Differenz passen)','€','auto'),
+      mk('einordnung','Einordnung',''),
+      mk('hx_wp_fremd','Helferzelle: WP-Montage fremdvergeben (Born8)','€','auto'),
+      mk('hx_wp_pflicht','Helferzelle: WP-Montage Pflichtanteil („alles alleine“)','€','auto'),
+      mk('hx_el_fremd','Helferzelle: Elektroleistung fremdvergeben (Born8)','€','auto'),
+      mk('hx_el_pflicht','Helferzelle: Elektro-Pflichtanteil („alles alleine“)','€','auto'),
+      mk('hx_pv_fremd','Helferzelle: PV-Montage fremdvergeben (Born8)','€','auto'),
+      mk('hx_pv_pflicht','Helferzelle: PV-Pflichtanteil („alles alleine“)','€','auto'),
+      mk('hx_summe_fremd','Helferzelle: Gesamtsumme Born8','€','auto'),
+      mk('hx_summe_pflicht','Helferzelle: Gesamtsumme „alles alleine“','€','auto')
+  ];
+  let elc=C('eigenleistung');
+  if(!elc){ elc={id:'eigenleistung',name:'Eigenleistung – Arbeitswert und eigene Zeit',phase:'14 · Auswertung: aus Lohnkosten werden eigene Stunden',costTerms:[],rows:[]}; st.clusters.push(elc); }
+  ELROWS.forEach(r=>{ if(elc.rows.some(x=>x.id===r.id)===false) elc.rows.push(r); });
+
+  // --- Werte je Spalte ---
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>String(t).replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ st.values[c+'::'+r+'::'+id]=at(val); };
+    const setIfDefault=(c,r,oldVal,newVal)=>{ const k=c+'::'+r+'::'+id; if(st.values[k]===undefined||String(st.values[k])===oldVal) st.values[k]=at(newVal); };
+    const R2=n=>String(Math.round(n*100)/100);
+    const diy=/alleine|eigenleistung|selbstbau|selbstgebaut|diy/i.test(v.name||'');
+
+    // Neu budgetierte Lohnpositionen (in „alles alleine“ 0)
+    set('kellerboden','lohn_pro_m2',diy?'0':'25');
+    setIfDefault('kellerboden','aufwand','0','=@kellerboden.flaeche*@kellerboden.lohn_pro_m2');
+    set('fenster','einbau_pro_stk',diy?'0':'250');
+    set('fenster','einbau_gesamt','=(@fenster.typ1_anzahl+@fenster.typ2_anzahl+@fenster.typ3_anzahl)*@fenster.einbau_pro_stk');
+    set('tueren','einbau_pro_stk',diy?'0':'600');
+    set('tueren','einbau_gesamt','=@tueren.anzahl*@tueren.einbau_pro_stk');
+    set('flaechenheizung','lohn_pro_m2',diy?'0':'14');
+    set('flaechenheizung','lohn_gesamt','=@flaechenheizung.flaeche*@flaechenheizung.lohn_pro_m2');
+
+    // Wärmepumpe: Gerät bleibt in beiden Spalten, Montage nur bedingt Eigenleistung (Kältemittel/Inbetriebnahme = Fachbetrieb)
+    const hk=st.values['haustechnik::kosten::'+id];
+    if(typeof hk!=='string'||hk.startsWith('=')===false){
+      if(hk===undefined||String(hk)==='11000'){ set('haustechnik','geraet_preis','8600'); set('haustechnik','montage_preis',diy?'900':'2400'); }
+      else { const n=parseFloat(hk)||0; set('haustechnik','geraet_preis',R2(n*(diy?1:0.78))); set('haustechnik','montage_preis',diy?'0':R2(n*0.22)); }
+      set('haustechnik','kosten','=@haustechnik.geraet_preis+@haustechnik.montage_preis');
+    }
+
+    // Elektro: Material bleibt, Zählerplatz/Abnahme bleibt Fremdgewerk, Rest Installation ist selbst ausführbar
+    const ek=st.values['elektrik::kosten::'+id];
+    if(typeof ek!=='string'||ek.startsWith('=')===false){
+      if(ek===undefined||String(ek)==='5000'){ set('elektrik','material_preis','2000'); set('elektrik','lohn_preis',diy?'1200':'3000'); }
+      else { const n=parseFloat(ek)||0; set('elektrik','material_preis',R2(n*0.4)); set('elektrik','lohn_preis',diy?R2(n*0.24):R2(n*0.6)); }
+      set('elektrik','kosten','=@elektrik.material_preis+@elektrik.lohn_preis');
+    }
+
+    // PV: rund 280 €/kWp für Montage + Elektroanschluss der Anlage
+    setIfDefault('pv','montage','0',diy?'900':'4900');
+    // Auswertung: die Stundenzeilen greifen bewusst auf Born8 zurück (die Spalte „fremdvergeben“)
+    const S='eigenleistung::lohn_stundensatz::'+id, A='eigenleistung::geraete_lohn_anteil::'+id;
+    const E=r=>'eigenleistung::'+r+'::'+id;
+    set('eigenleistung','lohn_stundensatz','75');
+    set('eigenleistung','geraete_lohn_anteil','0.5');
+    set('eigenleistung','h_dach','=@dach.aufwand/'+S);
+    set('eigenleistung','h_fenster','=@fenster.einbau_gesamt/'+S);
+    set('eigenleistung','h_tueren','=@tueren.einbau_gesamt/'+S);
+    set('eigenleistung','h_fassade','=@wand.aufwand_einbau/'+S);
+    set('eigenleistung','h_kellerboden','=@kellerboden.aufwand/'+S);
+    set('eigenleistung','h_perimeter','=@perimeterdaemmung.aufwand/'+S);
+    set('eigenleistung','h_horizontalsperre','=@horizontalsperre.aufwand/'+S);
+    set('eigenleistung','h_zwischendecke','=@zwischendecke.aufwand_einbau/'+S);
+    set('eigenleistung','h_flb','=@flaechenheizung.lohn_gesamt/'+S);
+    set('eigenleistung','hx_wp_fremd','=haustechnik::montage_preis::born8');
+    set('eigenleistung','hx_wp_pflicht','=haustechnik::montage_preis::born8_2');
+    set('eigenleistung','hx_el_fremd','=elektrik::lohn_preis::born8');
+    set('eigenleistung','hx_el_pflicht','=elektrik::lohn_preis::born8_2');
+    set('eigenleistung','hx_pv_fremd','=pv::montage::born8');
+    set('eigenleistung','hx_pv_pflicht','=pv::montage::born8_2');
+    set('eigenleistung','hx_summe_fremd','=gesamt::gesamtsumme::born8');
+    set('eigenleistung','hx_summe_pflicht','=gesamt::gesamtsumme::born8_2');
+    set('eigenleistung','h_haustechnik','=('+E('hx_wp_fremd')+'-'+E('hx_wp_pflicht')+')/'+S);
+    set('eigenleistung','h_elektro','=('+E('hx_el_fremd')+'-'+E('hx_el_pflicht')+')/'+S);
+    set('eigenleistung','h_pv','=('+E('hx_pv_fremd')+'-'+E('hx_pv_pflicht')+')/'+S);
+    set('eigenleistung','h_regenwasser','=regenwasser::einbau_fremd::born8/'+S);
+    set('eigenleistung','h_geruest_erd','=(baustelle::geruest::born8+graben::baggerkosten::born8+regenwasser::aushub_kosten::born8)*'+A+'/'+S);
+    set('eigenleistung','stunden_fach','='+['h_dach','h_fenster','h_tueren','h_fassade','h_kellerboden','h_perimeter','h_horizontalsperre','h_zwischendecke','h_flb','h_haustechnik','h_elektro','h_pv','h_regenwasser','h_geruest_erd'].map(r=>E(r)).join('+'));
+    set('eigenleistung','arbeitswert_lohn','='+E('stunden_fach')+'*'+S);
+    set('eigenleistung','geraete_fremd','=(baustelle::geruest::born8+graben::baggerkosten::born8+regenwasser::aushub_kosten::born8)*(1-'+A+')');
+    set('eigenleistung','faktor_selbstbau','2');
+    set('eigenleistung','stunden_eigenbau','='+E('stunden_fach')+'*'+E('faktor_selbstbau'));
+    set('eigenleistung','std_pro_kw','20');
+    set('eigenleistung','wochen','78');
+    set('eigenleistung','kapazitaet','='+E('std_pro_kw')+'*'+E('wochen'));
+    set('eigenleistung','deckung','='+E('stunden_eigenbau')+'==0?0:'+E('kapazitaet')+'/'+E('stunden_eigenbau')+'*100');
+    set('eigenleistung','wochen_benotigt','='+E('std_pro_kw')+'==0?0:'+E('stunden_eigenbau')+'/'+E('std_pro_kw'));
+    set('eigenleistung','monate_benotigt','='+E('wochen_benotigt')+'/4.33');
+    set('eigenleistung','eigenleistung_wert','=Math.min('+E('arbeitswert_lohn')+','+E('kapazitaet')+'/'+E('faktor_selbstbau')+'*'+S+')');
+    set('eigenleistung','rest_fremd','=Math.max(0,'+E('arbeitswert_lohn')+'-'+E('eigenleistung_wert')+')');
+    set('eigenleistung','delta_summen','='+E('hx_summe_fremd')+'-'+E('hx_summe_pflicht'));
+    set('eigenleistung','kontrolle_summe','='+E('arbeitswert_lohn')+'+'+E('geraete_fremd'));
+    set('eigenleistung','einordnung','='+E('deckung')+'>=100?"Bei "+'+E('std_pro_kw')+'+" h/Woche passen alle fremdvergebenen Gewerke in deinen Zeitraum – der Rest bleibt bei 0 €. Nicht enthalten: Innenausbau und Planung (in beiden Spalten 0 €).":"Bei "+'+E('std_pro_kw')+'+" h/Woche dauern alle fremdvergebenen Gewerke "+Math.round('+E('wochen_benotigt')+')+" Wochen ("+Math.round('+E('monate_benotigt')+')+" Monate). Was nicht in deine "+Math.round('+E('kapazitaet')+')+" h passt, bleibt fremdvergeben: "+Math.round('+E('rest_fremd')+')+" €. Dazu kommen "+Math.round('+E('geraete_fremd')+')+" € Gerät/Fremdkosten, die auch beim Selbstbau anfallen. Nicht enthalten: Innenausbau und Planung."');
+  });
+
+  // --- Cluster-Reihenfolge: Auswertung vor Betrieb, Gesamt bleibt zuletzt ---
+  const PHASEN=[['geometrie','0 · Grundlagen'],['anforderungen','0 · Grundlagen'],['normanforderungen','0 · Grundlagen'],['planung','1 · Planung, Genehmigung, Nachweise'],['baustelle','2 · Baustelle einrichten, Rückbau, Gerüst/Kran'],['regenwasser','3 · Erdarbeiten: Zisterne setzen und anbinden'],['graben','3 · Erdarbeiten: Solegraben (Restlänge vor Aushub festlegen!)'],['horizontalsperre','4 · Keller: Horizontalsperre vor dem neuen Boden'],['perimeterdaemmung','4 · Keller: Perimeterdämmung an erdberührter Wand'],['rohbau_keller','4 · Keller: Platte/WU, falls nötig'],['kellerboden','5 · Kellerboden-Aufbau (dämmen, FBH, Estrich)'],['dach','6 · Dach zuerst – Haus wetterfest machen'],['fenster','7 · Hülle: Fenster vor Fassadenuntersicht setzen'],['tueren','7 · Hülle: Außentüren mit der Fassade abstimmen'],['wand','8 · Fassade / Vorhangfassade um Fenster + Türen'],['wintergarten','8 · Anbau Wintergarten (Fundament früher!)'],['heizlast','9 · Heizlast berechnen – vor WP-Bestellung und Grabenaushub'],['zwischendecke','10 · Innenausbau: Zwischendecke/Untersicht'],['flaechenheizung','10 · Innenausbau: Heizkreise in Boden + Decke'],['haustechnik','11 · Haustechnik: Wärmepumpe, WW, Verteiler, Probebetrieb'],['bivalenz','11 · Haustechnik: Heizstab / Bivalenzausrüstung'],['elektrik','12 · Elektro: Rohbau, Verteiler, Hausanschluss'],['pv','12 · PV auf dem neuen Dach, Anmeldung Netz'],['ausbau','13 · Innenausbau: Putz, Trockenbau, Bäder, Treppe'],['eigenleistung','14 · Auswertung: aus Lohnkosten werden eigene Stunden'],['betrieb','15 · Betrieb / Verbrauch'],['gesamt','Summe']];
+  const pos={}; PHASEN.forEach((p,i)=>{ pos[p[0]]=i; });
+  st.clusters.forEach(cl=>{ const p=PHASEN[pos[cl.id]]; if(p) cl.phase=p[1]; else delete cl.phase; });
+  const rank=cl=>{ const i=pos[cl.id]; return i===undefined? PHASEN.length : i; };
+  st.clusters.sort((a,b)=>rank(a)-rank(b));
+  const gi=st.clusters.findIndex(c=>c.id==='gesamt');
+  if(gi>=0 && gi!==st.clusters.length-1) st.clusters.push(st.clusters.splice(gi,1)[0]);
+  st.schema=14;
+  return st;
+}
+
+// Schema 15: Planung und Innenausbau ausfüllen, Kran/Baustelleneinrichtung hinterlegen.
+// Wichtiger Fehler vorher: „In Gesamtsumme?“ war bei Planung und Innenausbau nie gesetzt -> Cluster zählte als „Nein“ (0 €).
+// Preise: Marktspiegel 2025/26 (HOAI-Umbauzuschlag, KranVergleich 2026, Schwäbisch Hall Innenausbau 2025), netto ohne 19 % MwSt.
+function migrate15(st){
+  const C=id=>st.clusters.find(c=>c.id===id);
+  const mk=(id,label,unit,type='value')=>({id,label,unit,type});
+  const INS=(cl,row,beforeId)=>{ if(!cl||cl.rows.some(r=>r.id===row.id)) return; let i=cl.rows.findIndex(r=>r.id===(beforeId||'zwischensumme')); if(i<0) i=cl.rows.length; cl.rows.splice(i,0,row); };
+  const relabel=(cl,rid,label,type)=>{ const r=cl&&cl.rows.find(x=>x.id===rid); if(r){ if(label) r.label=label; if(type!==undefined) r.type=type; } };
+
+  // --- Schalter setzen: ohne Wert galt der Cluster bisher als „Nein“ und lieferte 0 € ---
+  st.variants.forEach(v=>{ ['planung','ausbau','rohbau_keller'].forEach(cid=>{ const k=cid+'::auswahl::'+v.id; if(st.values[k]===undefined) st.values[k]='1'; }); });
+
+  // --- Planung: Genehmigung und Nachweise, deshalb in beiden Spalten gleich ---
+  const pl=C('planung');
+  INS(pl,mk('bauphysik','Bauphysik: Wärmeschutznachweis GEG/EH40, Wärmebrücken, Schall- und Feuchteschutz','€'));
+  INS(pl,mk('ee_fachplanung','Fachplanung Elektro/TGA: Zählerplatz, EEE-Nachweis, Abnahmeprotokolle','€'));
+  INS(pl,mk('vermessung','Vermessung: Aufmaß Bestand, Lageplan, Einmessung, Höhen für Fassade und Graben','€'));
+  INS(pl,mk('baugrund','Baugrundgutachten: Bodenkennwerte, Grundwasser, Bodenklasse für Aushub','€'));
+  relabel(pl,'architekt','Architekt LPH 1–7 + 9 (Entwurf, Genehmigung, Ausführung, Ausschreibung, Dokumentation – ohne Objektüberwachung)');
+  relabel(pl,'statik','Tragwerksplanung inkl. Schal- und Bewehrungsplänen (Bestand, Dach, Anbau, Fundamente)');
+  relabel(pl,'energieberater','Energieeffizienz-Experte: EH40-Konzept, Bestätigung zum Antrag, Förderanträge');
+  relabel(pl,'bauleitung','Bauleitung / Objektüberwachung LPH 8 (≈ 3,5 % der Bausumme) – auch bei Eigenleistung nötig');
+  relabel(pl,'qng','QNG-Fachplanung und Siegel (Pflicht für BEG-/KfW-EH40-Förderung, sonst auf 0 €)');
+  relabel(pl,'genehmigungen','Baugenehmigung (0,5–1 % der Bausumme), Entwässerung/Zisterne, Gestattung Kran/Gerüst, Prüfstatik falls gefordert');
+  relabel(pl,'hinweis_extern','Hinweis: Planungsposten stehen in beiden Spalten gleich – Entwurfsverfasser, Standsicherheits- und GEG-Nachweis sind rechtlich nötig und keine Eigenleistungs-Masse. Nettopreise; BEG bezuschusst Fachplanung und Baubegleitung mit 50 % (max. 5.000 € beim EFH), BAFA-Zuschuss Energieberatung 650 €. Wer die Bauleitung selbst übernimmt, kann den Wert senken – dann aber Haftung für Fristen und Abnahmen mitdenken.');
+  if(pl){
+    pl.costTerms=[['architekt'],['statik'],['bauphysik'],['energieberater'],['ee_fachplanung'],['vermessung'],['baugrund'],['bauleitung'],['qng'],['genehmigungen']];
+    const porder=['architekt','statik','bauphysik','ee_fachplanung','energieberater','bauleitung','qng','vermessung','baugrund','genehmigungen','hinweis_extern','zwischensumme','auswahl'];
+    const prank=id=>{ const i=porder.indexOf(id); return i<0?porder.length:i; };
+    pl.rows.sort((a,b)=>prank(a.id)-prank(b.id));
+  }
+
+  // --- Baustelle: Kran und Einrichtung in beiden Spalten gleich (Kranfahrer ist Pflicht) ---
+  const bs=C('baustelle');
+  relabel(bs,'kran_tage','Krantage: Sparren-/Binderpakete, OSB und Fassadenelemente, Anbau (in beiden Spalten gleich)');
+  relabel(bs,'kran_satz','Kran-Tagessatz Mobilkran 30–50 t inkl. Kranführer (Markt 600–900 €/Tag)');
+  relabel(bs,'sonstiges','Baustelleneinrichtung: Baustrom und Verteiler, Container, Absperrung, Schutzwände');
+  relabel(bs,'hinweis_fremd','Hinweis: Kran, Gerüst, Container und Baustrom sind keine Lohnkosten – sie fallen auch beim Selbstbau an. Mobilkran 30–50 t kostet 600–900 € je Tag inkl. Kranführer (80–150 €/h, meist 4 h Mindestbuchung); An- und Abfahrt sowie Standgebühr ab ~50 €/Tag kommen dazu. Schwenkt der Ausleger über Straße oder Nachbargrund: Gestattung einplanen.');
+  // --- Innenausbau: Material in beiden Spalten, Lohn nur in Born8 ---
+  const ab=C('ausbau');
+  INS(ab,mk('ausbauanteil','Anteil der Geschossfläche, der wirklich ausgebaut wird (unbeheizte Keller-/Speicheranteile abziehen)',''));
+  INS(ab,mk('ausbauflaeche','Ausbaufläche','m²','auto'));
+  relabel(ab,'flaeche','Beheizte Geschossfläche (Basis)');
+  relabel(ab,'preis_pro_m2','Material je m²: Innenputz, Spachtel, Wandgestaltung');
+  INS(ab,mk('putz_lohn','Lohn je m²: Innenputz, Spachtel, Wandgestaltung (fremdvergeben)','€/m²'));
+  INS(ab,mk('trocken_mat','Material je m²: Trockenbau, Vorsatzschalen, Dämmung','€/m²'));
+  INS(ab,mk('trocken_lohn','Lohn je m²: Trockenbau (fremdvergeben)','€/m²'));
+  INS(ab,mk('estrich_mat','Material je m²: Estrich bzw. Trockenestrich','€/m²'));
+  INS(ab,mk('estrich_lohn','Lohn je m²: Estrich (fremdvergeben)','€/m²'));
+  INS(ab,mk('boden_mat','Material je m²: Bodenbeläge, Fliesen, Trittschalldämmung','€/m²'));
+  INS(ab,mk('boden_lohn','Lohn je m²: Böden und Fliesen verlegen (fremdvergeben)','€/m²'));
+  INS(ab,mk('maler_mat','Material je m²: Tapete, Farbe, Grundierung','€/m²'));
+  INS(ab,mk('maler_lohn','Lohn je m²: Tapezier- und Malerarbeiten (fremdvergeben)','€/m²'));
+  relabel(ab,'sanitaer','Sanitär/Bäder – Material: Objekte, Armaturen, Vorwandtechnik, Anschlüsse');
+  INS(ab,mk('sanitaer_lohn','Sanitär/Bäder – Lohn: Montage, Anschluss, Abnahme (fremdvergeben)','€'));
+  relabel(ab,'treppe','Treppe – Material: Setzstufen, Belag, Geländer');
+  INS(ab,mk('treppe_lohn','Treppe – Lohn: Montage (fremdvergeben)','€'));
+  INS(ab,mk('innentueren_mat','Innentüren – Material: 12 Türen mit Zargen','€'));
+  INS(ab,mk('innentueren_lohn','Innentüren – Lohn: Montage (fremdvergeben)','€'));
+  relabel(ab,'sonstiges','Sonstiges – Material: Fensterbänke, Silikon, Kleinteile');
+  INS(ab,mk('sonstiges_lohn','Sonstiges – Lohn (fremdvergeben)','€'));
+  INS(ab,mk('material_gesamt','Info: Material gesamt','€','auto'));
+  INS(ab,mk('lohn_gesamt','Info: Lohn gesamt – Basis für die Eigenleistungs-Stunden','€','auto'));
+  relabel(ab,'hinweis_luecke','Hinweis: Innenausbau ist jetzt budgetiert. Fremdvergeben 264 €/m² Ausbaufäche ohne Sanitär, Türen und Treppe (Markt 220–390 €/m² Wohnfläche je nach Standard), davon rund 53 % Lohn. „alles alleine“ = nur Material. Putz, Trockenbau, Maler und Böden sind die Klassiker für Eigenleistung; Estrich und Fliesen besser fremdvergeben. Sanitär, Innentüren und Treppe sind separat, damit sich einzeln kürzen lässt.');
+  if(ab){
+    ab.costTerms=[['ausbauflaeche','preis_pro_m2'],['ausbauflaeche','putz_lohn'],['ausbauflaeche','trocken_mat'],['ausbauflaeche','trocken_lohn'],['ausbauflaeche','estrich_mat'],['ausbauflaeche','estrich_lohn'],['ausbauflaeche','boden_mat'],['ausbauflaeche','boden_lohn'],['ausbauflaeche','maler_mat'],['ausbauflaeche','maler_lohn'],['sanitaer'],['sanitaer_lohn'],['treppe'],['treppe_lohn'],['innentueren_mat'],['innentueren_lohn'],['sonstiges'],['sonstiges_lohn']];
+    const order=['flaeche','ausbauanteil','ausbauflaeche','preis_pro_m2','putz_lohn','trocken_mat','trocken_lohn','estrich_mat','estrich_lohn','boden_mat','boden_lohn','maler_mat','maler_lohn','sanitaer','sanitaer_lohn','treppe','treppe_lohn','innentueren_mat','innentueren_lohn','sonstiges','sonstiges_lohn','material_gesamt','lohn_gesamt','hinweis_luecke','zwischensumme','auswahl'];
+    const rank=id=>{ const i=order.indexOf(id); return i<0?order.length:i; };
+    ab.rows.sort((a,b)=>rank(a.id)-rank(b.id));
+  }
+  const elc=C('eigenleistung');
+  INS(elc,mk('h_innenausbau','h · Innenausbau: Putz, Trockenbau, Estrich, Böden, Maler, Sanitär, Türen, Treppe','h','auto'),'stunden_fach');
+  relabel(elc,'stunden_fach','Facharbeiter-Stunden gesamt (inkl. Innenausbau)');
+  relabel(elc,'geraete_fremd','Gerät/Fremdkosten, die auch beim Selbstbau anfallen (Personalanteil aus Gerüst, Bagger, Aushub)');
+  relabel(elc,'hinweis','Born8 = alles fremdvergeben (Material + Lohn), „alles alleine“ = Material + gesetzlich notwendige Fremdgewerke. Die Stundenzeilen rechnen die Lohnpositionen aus Born8 mit dem Stundensatz unten in Facharbeiter-Stunden um – viel Stunden sind die lohnendsten Eigenleistungs-Gewerke. Nicht in den Stunden: Planung, Kran und Baustelleneinrichtung (stehen in beiden Spalten gleich und sind nicht selbst machbar).');
+  st.variants.forEach(v=>{
+    const id=v.id, at=t=>String(t).replace(/@([a-z0-9_]+)\.([a-z0-9_]+)/g,(m,c,r)=>c+'::'+r+'::'+id);
+    const set=(c,r,val)=>{ st.values[c+'::'+r+'::'+id]=at(val); };
+    const setIfDefault=(c,r,oldVal,newVal)=>{ const k=c+'::'+r+'::'+id, cur=st.values[k]; if(cur===undefined||String(cur)===''||String(cur)===oldVal) st.values[k]=at(newVal); };
+    const diy=/alleine|eigenleistung|selbstbau|selbstgebaut|diy/i.test(v.name||'');
+
+    // Planung und Kran: in beiden Spalten gleich (Nachweispflicht bzw. gemietetes Gerät mit Kranführer)
+    [['architekt','18500'],['statik','5200'],['bauphysik','2600'],['energieberater','2400'],['ee_fachplanung','2200'],['vermessung','1800'],['baugrund','1900'],['bauleitung','11000'],['qng','2500'],['genehmigungen','3400']].forEach(p=>setIfDefault('planung',p[0],'',p[1]));
+    setIfDefault('baustelle','kran_tage','','4');
+    setIfDefault('baustelle','kran_satz','','850');
+    setIfDefault('baustelle','sonstiges','','2800');
+
+    // Innenausbau: [Zeile, Wert Born8, Wert „alles alleine“]
+    setIfDefault('ausbau','ausbauanteil','','0.85');
+    set('ausbau','ausbauflaeche','=@ausbau.flaeche*@ausbau.ausbauanteil');
+    [['preis_pro_m2','40','40'],['putz_lohn','60','0'],['trocken_mat','20','20'],['trocken_lohn','25','0'],['estrich_mat','18','18'],['estrich_lohn','14','0'],['boden_mat','40','40'],['boden_lohn','25','0'],['maler_mat','6','6'],['maler_lohn','16','0'],['sanitaer','17000','17000'],['sanitaer_lohn','13000','0'],['treppe','4200','4200'],['treppe_lohn','2300','0'],['innentueren_mat','5000','5000'],['innentueren_lohn','1900','0'],['sonstiges','4000','4000'],['sonstiges_lohn','1500','0']].forEach(p=>setIfDefault('ausbau',p[0],'',diy?p[2]:p[1]));
+    set('ausbau','material_gesamt','=(@ausbau.preis_pro_m2+@ausbau.trocken_mat+@ausbau.estrich_mat+@ausbau.boden_mat+@ausbau.maler_mat)*@ausbau.ausbauflaeche+@ausbau.sanitaer+@ausbau.treppe+@ausbau.innentueren_mat+@ausbau.sonstiges');
+    set('ausbau','lohn_gesamt','=(@ausbau.putz_lohn+@ausbau.trocken_lohn+@ausbau.estrich_lohn+@ausbau.boden_lohn+@ausbau.maler_lohn)*@ausbau.ausbauflaeche+@ausbau.sanitaer_lohn+@ausbau.treppe_lohn+@ausbau.innentueren_lohn+@ausbau.sonstiges_lohn');
+
+    // Eigenleistung: Lohnanteil vom Innenausbau in die Stundenrechnung aufnehmen
+    const S='eigenleistung::lohn_stundensatz::'+id, E=r=>'eigenleistung::'+r+'::'+id;
+    set('eigenleistung','h_innenausbau','=@ausbau.lohn_gesamt/'+S);
+    set('eigenleistung','stunden_fach','='+['h_dach','h_fenster','h_tueren','h_fassade','h_kellerboden','h_perimeter','h_horizontalsperre','h_zwischendecke','h_flb','h_haustechnik','h_elektro','h_pv','h_regenwasser','h_geruest_erd','h_innenausbau'].map(r=>E(r)).join('+'));
+    set('eigenleistung','einordnung','='+E('deckung')+'>=100?"Bei "+'+E('std_pro_kw')+'+" h/Woche passen alle Lohnpositionen inklusive Innenausbau in deinen Zeitraum – der Rest bleibt bei 0 €.":"Bei "+'+E('std_pro_kw')+'+" h/Woche dauern alle Lohnpositionen im Eigenbau "+Math.round('+E('wochen_benotigt')+')+" Wochen ("+Math.round('+E('monate_benotigt')+')+" Monate). In deine "+Math.round('+E('kapazitaet')+')+" h passen Lohnleistungen im Wert von "+Math.round('+E('eigenleistung_wert')+')+" €. Der Rest von "+Math.round('+E('rest_fremd')+')+" € bleibt fremdvergeben. Zusätzlich fallen in beiden Spalten gleich an: "+Math.round('+E('geraete_fremd')+')+" € Gerüst/Bagger/Aushub sowie Kran, Baustelleneinrichtung und komplette Planung."');
+  });
+  st.schema=15;
+  return st;
+}
+
+
 function migrate(st){
   if(!st.values) st.values={};
   if(!st.collapsed) st.collapsed={};
   if((st.schema||0)<5) migrate5(st);
   if((st.schema||0)<6) migrate6(st);
   if((st.schema||0)<7) migrate7(st);
+  if((st.schema||0)<8) migrate8(st);
+  if((st.schema||0)<9) migrate9(st);
+  if((st.schema||0)<10) migrate10(st);
+  if((st.schema||0)<11) migrate11(st);
+  if((st.schema||0)<12) migrate12(st);
+  if((st.schema||0)<13) migrate13(st);
+  if((st.schema||0)<14) migrate14(st);
+  if((st.schema||0)<15) migrate15(st);
   return st;
 }
 
@@ -590,7 +1352,11 @@ function render(){
     const tdc = document.createElement('td');
     tdc.colSpan = state.variants.length+1;
     const collapsed = q ? false : !!state.collapsed[cl.id];
-    tdc.textContent = (collapsed?'▸ ':'▾ ') + cl.name + '  ';
+    const clName = document.createElement('span');
+    clName.textContent = (collapsed?'▸ ':'▾ ') + cl.name;
+    tdc.appendChild(clName);
+    if(cl.phase){ const ph=document.createElement('span'); ph.className='phase'; ph.textContent='– '+cl.phase; tdc.appendChild(ph); }
+    tdc.appendChild(document.createTextNode('  '));
     const addRowBtn = document.createElement('button');
     addRowBtn.textContent='+ Zeile'; addRowBtn.style.fontWeight='400';
     addRowBtn.addEventListener('click',(e)=>{ e.stopPropagation();
